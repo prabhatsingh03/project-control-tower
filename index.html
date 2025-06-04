@@ -157,7 +157,7 @@
             background-color: #0284c7;
         }
 
-        .gantt-bar-delay-rain {
+        .gantt-bar-delay-Weather {
             background-color: #bae6fd;
             /* sky-200 */
             color: #0369a1;
@@ -277,7 +277,7 @@
         const ProjectIcon = (props) => React.createElement(IconPlaceholder, { name: "Proj", ...props });
         const SendIcon = (props) => React.createElement(IconPlaceholder, { name: "Send", ...props });
         const EyeIcon = (props) => React.createElement(IconPlaceholder, { name: "Eye", ...props });
-        const CloudRain = (props) => React.createElement(IconPlaceholder, { name: "Rain", ...props });
+        const CloudWeather = (props) => React.createElement(IconPlaceholder, { name: "Weather", ...props });
         const UserX = (props) => React.createElement(IconPlaceholder, { name: "Delay", ...props });
         const UploadIcon = (props) => React.createElement(IconPlaceholder, { name: "LogoUp", ...props });
         const AppIconPlaceholder = (props) => React.createElement("div", { className: `h-10 w-10 bg-slate-300 text-slate-500 flex items-center justify-center rounded text-sm font-bold ${props.className || ''}` }, "App");
@@ -291,7 +291,7 @@
         const ADMIN_USERNAME = "admin";
         const ADMIN_PASSWORD = "password123";
         const VALID_PROJECT_NUMBER = "PROJ789";
-        const INITIAL_CSV_DATA = `WBS,Task Name,Original Duration (Days),Start Date,Finish Date,Is Critical,Predecessor WBS,Rain Delay (Days),Contractor Delay (Days)
+        const INITIAL_CSV_DATA = `WBS,Task Name,Original Duration (Days),Start Date,Finish Date,Is Critical,Predecessor WBS,Weather Delay (Days),Contractor Delay (Days)
 E001,Project Kick-off,5,01-07-2025,05-07-2025,Yes,,0,0
 E002,Basic Engineering,20,08-07-2025,02-08-2025,Yes,E001,2,1
 P001,Procurement Strategy,10,08-07-2025,19-07-2025,,E001,0,0
@@ -323,7 +323,7 @@ T002,Commissioning & Startup,10,14-04-2025,25-04-2025,Yes,T001,0,0
 H001,Handover & Documentation,5,28-04-2025,02-05-2025,Yes,T002,0,0`;
         const TASK_STATUSES = ['Not Started', 'In Progress', 'Completed', 'Delayed', 'On Hold', 'Ahead of Schedule'];
         const CSV_BASE_EXPECTED_HEADERS = ["WBS", "Task Name", "Original Duration (Days)", "Start Date", "Finish Date"];
-        const CLIENT_COMMENT_STATUSES = ['Acknowledged', 'Revert & Complete', 'Hold for Review'];
+        const CLIENT_COMMENT_STATUSES = ['Acknowledged', 'Approved', 'Return with Comments','Hold for Review'];
 
 
         // --- Helper Functions ---
@@ -384,7 +384,7 @@ H001,Handover & Documentation,5,28-04-2025,02-05-2025,Yes,T002,0,0`;
             }).filter(task => task !== null && task["WBS"]);
         };
         const generateCSV = (tasksToExport, allTasksForDepLookup) => {
-            const headers = ["WBS", "Task Name", "Original Duration (Days)", "Planned Start Date", "Planned End Date", "Actual Start Date", "Actual End Date", "Progress (%)", "Status", "Is Critical", "Predecessor WBS", "Rain Delay (Days)", "Contractor Delay (Days)", "Is Client Deliverable", "Notes", "Client Communications Log"];
+            const headers = ["WBS", "Task Name", "Original Duration (Days)", "Planned Start Date", "Planned End Date", "Actual Start Date", "Actual End Date", "Progress (%)", "Status", "Is Critical", "Predecessor WBS", "Weather Delay (Days)", "Contractor Delay (Days)", "Is Client Deliverable", "Notes", "Client Communications Log"];
             const idToWbsMap = allTasksForDepLookup.reduce((acc, task) => { acc[task.id] = task.wbs; return acc; }, {});
             const rows = tasksToExport.map(task => {
                 const predecessorWBS = (task.dependencies || []).map(depId => idToWbsMap[depId] || `ID_NOT_FOUND:${depId}`).join(';');
@@ -399,7 +399,7 @@ H001,Handover & Documentation,5,28-04-2025,02-05-2025,Yes,T002,0,0`;
                     formatDateForExport(task.actualStartDate), formatDateForExport(task.actualEndDate),
                     task.progress || 0, task.status || 'Not Started', task.isCritical ? 'Yes' : 'No',
                     predecessorWBS,
-                    task.delayRainDays || 0, task.delayContractorDays || 0,
+                    task.delayWeatherDays || 0, task.delayContractorDays || 0,
                     task.isClientDeliverable ? 'Yes' : 'No',
                     (task.notes || []).map(n => `${new Date(n.timestamp).toLocaleString()} [${n.source}]: ${n.text.replace(/"/g, '""')}`).join('; '),
                     clientCommLog
@@ -416,7 +416,7 @@ H001,Handover & Documentation,5,28-04-2025,02-05-2025,Yes,T002,0,0`;
                 const totalProgress = tasks.reduce((sum, task) => sum + (task.progress || 0), 0);
                 return Math.round(totalProgress / tasks.length);
             }, [tasks]);
-            const totalRainDelay = useMemo(() => tasks.reduce((sum, task) => sum + (task.delayRainDays || 0), 0), [tasks]);
+            const totalWeatherDelay = useMemo(() => tasks.reduce((sum, task) => sum + (task.delayWeatherDays || 0), 0), [tasks]);
             const totalContractorDelay = useMemo(() => tasks.reduce((sum, task) => sum + (task.delayContractorDays || 0), 0), [tasks]);
 
 
@@ -429,8 +429,8 @@ H001,Handover & Documentation,5,28-04-2025,02-05-2025,Yes,T002,0,0`;
                             style: { width: `${overallProgress}%` }
                         }, `${overallProgress}%`)
                     ),
-                    (totalRainDelay > 0 || totalContractorDelay > 0) && React.createElement("div", { className: "text-xs text-slate-500 mt-1 flex justify-between" },
-                        totalRainDelay > 0 && React.createElement("span", null, "Total Rain Delay: ", totalRainDelay, " days"),
+                    (totalWeatherDelay > 0 || totalContractorDelay > 0) && React.createElement("div", { className: "text-xs text-slate-500 mt-1 flex justify-between" },
+                        totalWeatherDelay > 0 && React.createElement("span", null, "Total Weather Delay: ", totalWeatherDelay, " days"),
                         totalContractorDelay > 0 && React.createElement("span", null, "Total Contractor Delay: ", totalContractorDelay, " days")
                     )
                 )
@@ -452,14 +452,14 @@ H001,Handover & Documentation,5,28-04-2025,02-05-2025,Yes,T002,0,0`;
                     React.createElement("p", { key: "status" }, React.createElement("strong", null, "Status: "), task.status),
                     React.createElement("p", { key: "progress" }, React.createElement("strong", null, "Progress: "), `${task.progress || 0}%`)
                 ];
-                if (task.delayRainDays > 0) {
-                    details.push(React.createElement("p", { key: "rain" }, React.createElement("strong", null, "Rain Delay: "), `${task.delayRainDays} day(s)`));
+                if (task.delayWeatherDays > 0) {
+                    details.push(React.createElement("p", { key: "Weather" }, React.createElement("strong", null, "Weather Delay: "), `${task.delayWeatherDays} day(s)`));
                 }
                 if (task.delayContractorDays > 0) {
                     details.push(React.createElement("p", { key: "contractor" }, React.createElement("strong", null, "Contractor Delay: "), `${task.delayContractorDays} day(s)`));
                 }
-                if (segmentType === 'rain') {
-                    details.push(React.createElement("p", { key: "segtype", className: "mt-1 pt-1 border-t border-slate-500 text-sky-300" }, "Segment: Rain Delay"));
+                if (segmentType === 'Weather') {
+                    details.push(React.createElement("p", { key: "segtype", className: "mt-1 pt-1 border-t border-slate-500 text-sky-300" }, "Segment: Weather Delay"));
                 } else if (segmentType === 'contractor') {
                     details.push(React.createElement("p", { key: "segtype", className: "mt-1 pt-1 border-t border-slate-500 text-amber-300" }, "Segment: Contractor Delay"));
                 }
@@ -476,7 +476,7 @@ H001,Handover & Documentation,5,28-04-2025,02-05-2025,Yes,T002,0,0`;
                     if (task.plannedStartDate) { const d = new Date(task.plannedStartDate + 'T00:00:00Z'); if (!minDate || d < minDate) minDate = d; }
                     if (task.plannedEndDate) {
                         let effectiveEndDate = new Date(task.plannedEndDate + 'T00:00:00Z');
-                        effectiveEndDate.setDate(effectiveEndDate.getDate() + (task.delayRainDays || 0) + (task.delayContractorDays || 0));
+                        effectiveEndDate.setDate(effectiveEndDate.getDate() + (task.delayWeatherDays || 0) + (task.delayContractorDays || 0));
                         if (!maxDate || effectiveEndDate > maxDate) maxDate = effectiveEndDate;
                     }
                 });
@@ -517,11 +517,11 @@ H001,Handover & Documentation,5,28-04-2025,02-05-2025,Yes,T002,0,0`;
                         const startOffsetDays = Math.max(0, Math.ceil((taskStartDate - projectStartDate) / (1000 * 60 * 60 * 24)));
                         const plannedDurationDays = Math.max(1, Math.ceil((taskPlannedEndDate - taskStartDate) / (1000 * 60 * 60 * 24)) + 1);
 
-                        const rainDelay = task.delayRainDays || 0;
+                        const WeatherDelay = task.delayWeatherDays || 0;
                         const contractorDelay = task.delayContractorDays || 0;
 
                         const plannedWidth = plannedDurationDays * DAY_WIDTH;
-                        const rainDelayWidth = rainDelay * DAY_WIDTH;
+                        const WeatherDelayWidth = WeatherDelay * DAY_WIDTH;
                         const contractorDelayWidth = contractorDelay * DAY_WIDTH;
 
                         const barSegments = [];
@@ -529,23 +529,23 @@ H001,Handover & Documentation,5,28-04-2025,02-05-2025,Yes,T002,0,0`;
                             React.createElement("div", {
                                 key: `${task.id}-main`,
                                 className: `gantt-bar-segment ${getBarColorClass(task.status)} ${task.isCritical ? 'is-critical' : ''}`,
-                                style: { width: `${plannedWidth - ((rainDelayWidth > 0 || contractorDelayWidth > 0) ? 0 : 2)}px` },
+                                style: { width: `${plannedWidth - ((WeatherDelayWidth > 0 || contractorDelayWidth > 0) ? 0 : 2)}px` },
                                 onMouseEnter: (e) => handleMouseEnter(e, task, 'main'),
                                 onMouseLeave: handleMouseLeave,
                                 title: `${task.taskName} (Planned)`
                             }, task.wbs)
                         );
 
-                        if (rainDelay > 0) {
+                        if (WeatherDelay > 0) {
                             barSegments.push(
                                 React.createElement("div", {
-                                    key: `${task.id}-rain`,
-                                    className: `gantt-bar-segment gantt-bar-delay-rain ${task.isCritical ? 'is-critical' : ''}`,
-                                    style: { width: `${rainDelayWidth}px` },
-                                    onMouseEnter: (e) => handleMouseEnter(e, task, 'rain'),
+                                    key: `${task.id}-Weather`,
+                                    className: `gantt-bar-segment gantt-bar-delay-Weather ${task.isCritical ? 'is-critical' : ''}`,
+                                    style: { width: `${WeatherDelayWidth}px` },
+                                    onMouseEnter: (e) => handleMouseEnter(e, task, 'Weather'),
                                     onMouseLeave: handleMouseLeave,
-                                    title: `${task.taskName} (Rain Delay: ${rainDelay}d)`
-                                }, React.createElement(CloudRain, { size: 12 }))
+                                    title: `${task.taskName} (Weather Delay: ${WeatherDelay}d)`
+                                }, React.createElement(CloudWeather, { size: 12 }))
                             );
                         }
                         if (contractorDelay > 0) {
@@ -553,7 +553,7 @@ H001,Handover & Documentation,5,28-04-2025,02-05-2025,Yes,T002,0,0`;
                                 React.createElement("div", {
                                     key: `${task.id}-contractor`,
                                     className: `gantt-bar-segment gantt-bar-delay-contractor ${task.isCritical ? 'is-critical' : ''}`,
-                                    style: { width: `${contractorDelayWidth - ((rainDelay > 0 && contractorDelay > 0) || (rainDelay === 0 && contractorDelay > 0 && plannedWidth === 0) ? 0 : 2)}px` },
+                                    style: { width: `${contractorDelayWidth - ((WeatherDelay > 0 && contractorDelay > 0) || (WeatherDelay === 0 && contractorDelay > 0 && plannedWidth === 0) ? 0 : 2)}px` },
                                     onMouseEnter: (e) => handleMouseEnter(e, task, 'contractor'),
                                     onMouseLeave: handleMouseLeave,
                                     title: `${task.taskName} (Contractor Delay: ${contractorDelay}d)`
@@ -642,7 +642,7 @@ H001,Handover & Documentation,5,28-04-2025,02-05-2025,Yes,T002,0,0`;
                                 actualStartDate: null, actualEndDate: null, progress: 0, status: 'Not Started', notes: [],
                                 isClientDeliverable: false, isCritical: (csvTask['Is Critical'] || '').toLowerCase() === 'yes',
                                 dependencies: [], clientComments: [],
-                                delayRainDays: parseInt(csvTask['Rain Delay (Days)'], 10) || 0,
+                                delayWeatherDays: parseInt(csvTask['Weather Delay (Days)'], 10) || 0,
                                 delayContractorDays: parseInt(csvTask['Contractor Delay (Days)'], 10) || 0,
                                 isExpanded: false,
                             };
@@ -657,7 +657,7 @@ H001,Handover & Documentation,5,28-04-2025,02-05-2025,Yes,T002,0,0`;
                         console.log("Initial data seeded to localStorage.");
                     } catch (parseErr) { console.error("Error parsing initial CSV data:", parseErr); setAppError("Failed to parse initial schedule. " + parseErr.message); return; }
                 }
-                setTasks(loadedTasks.map(task => ({ ...task, clientComments: task.clientComments || [], delayRainDays: task.delayRainDays || 0, delayContractorDays: task.delayContractorDays || 0, isExpanded: task.isExpanded || false })));
+                setTasks(loadedTasks.map(task => ({ ...task, clientComments: task.clientComments || [], delayWeatherDays: task.delayWeatherDays || 0, delayContractorDays: task.delayContractorDays || 0, isExpanded: task.isExpanded || false })));
             }, []);
 
             useEffect(() => {
@@ -728,7 +728,7 @@ H001,Handover & Documentation,5,28-04-2025,02-05-2025,Yes,T002,0,0`;
                                         plannedStartDate: parseCSVDate(csvTask["Start Date"]) || existingTask.plannedStartDate,
                                         plannedEndDate: parseCSVDate(csvTask["Finish Date"]) || existingTask.plannedEndDate,
                                         isCritical: csvTask.hasOwnProperty("Is Critical") ? (csvTask["Is Critical"] || '').toLowerCase() === 'yes' : existingTask.isCritical,
-                                        delayRainDays: csvTask.hasOwnProperty("Rain Delay (Days)") ? (parseInt(csvTask["Rain Delay (Days)"], 10) || 0) : existingTask.delayRainDays,
+                                        delayWeatherDays: csvTask.hasOwnProperty("Weather Delay (Days)") ? (parseInt(csvTask["Weather Delay (Days)"], 10) || 0) : existingTask.delayWeatherDays,
                                         delayContractorDays: csvTask.hasOwnProperty("Contractor Delay (Days)") ? (parseInt(csvTask["Contractor Delay (Days)"], 10) || 0) : existingTask.delayContractorDays,
                                         clientComments: existingTask.clientComments || [],
                                     };
@@ -741,7 +741,7 @@ H001,Handover & Documentation,5,28-04-2025,02-05-2025,Yes,T002,0,0`;
                                         actualStartDate: null, actualEndDate: null, progress: 0, status: 'Not Started', notes: [],
                                         isClientDeliverable: false, isCritical: (csvTask["Is Critical"] || '').toLowerCase() === 'yes',
                                         dependencies: [], clientComments: [],
-                                        delayRainDays: parseInt(csvTask["Rain Delay (Days)"], 10) || 0,
+                                        delayWeatherDays: parseInt(csvTask["Weather Delay (Days)"], 10) || 0,
                                         delayContractorDays: parseInt(csvTask["Contractor Delay (Days)"], 10) || 0,
                                         isExpanded: false,
                                     };
@@ -990,10 +990,10 @@ H001,Handover & Documentation,5,28-04-2025,02-05-2025,Yes,T002,0,0`;
             const SortIcon = ({ field }) => { if (sortBy.field !== field) return React.createElement(ChevronDown, { className: "inline ml-1 h-4 w-4 opacity-30 text-slate-400" }); return sortBy.order === 'asc' ? React.createElement(ChevronUp, { className: "inline ml-1 h-4 w-4 text-sky-600" }) : React.createElement(ChevronDown, { className: "inline ml-1 h-4 w-4 text-sky-600" }); };
             const commonHeaders = [{ key: 'wbs', label: 'WBS' }, { key: 'taskName', label: 'Task Name / Deliverable' }, { key: 'plannedStartDate', label: 'Planned Start' }, { key: 'plannedEndDate', label: 'Planned End' }, { key: 'status', label: 'Status' }, { key: 'progress', label: 'Progress' },];
             let headers = (loggedInUserType === 'admin' && viewType === 'admin') ?
-                [...commonHeaders, { key: 'actualStartDate', label: 'Actual Start' }, { key: 'actualEndDate', label: 'Actual End' }, { key: 'isCritical', label: 'Critical?' }, { key: 'delayRainDays', label: 'Rain Delay' }, { key: 'delayContractorDays', label: 'Ctr. Delay' }, { key: 'isClientDeliverable', label: 'Client View?' }, { key: 'clientComm', label: 'Client Comm.' }, { key: 'actions', label: 'Actions' }] :
+                [...commonHeaders, { key: 'actualStartDate', label: 'Actual Start' }, { key: 'actualEndDate', label: 'Actual End' }, { key: 'isCritical', label: 'Critical?' }, { key: 'delayWeatherDays', label: 'Weather Delay' }, { key: 'delayContractorDays', label: 'Ctr. Delay' }, { key: 'isClientDeliverable', label: 'Client View?' }, { key: 'clientComm', label: 'Client Comm.' }, { key: 'actions', label: 'Actions' }] :
                 [...commonHeaders, { key: 'clientComm', label: 'Comments' }];
 
-            return (React.createElement("div", { className: "overflow-x-auto bg-white shadow-xl rounded-xl" }, React.createElement("table", { className: "min-w-full divide-y divide-slate-200" }, React.createElement("thead", { className: "bg-slate-50" }, React.createElement("tr", null, headers.map(header => (React.createElement("th", { key: header.key, scope: "col", className: "px-4 py-3.5 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-slate-100", onClick: () => !['actions', 'isClientDeliverable', 'isCritical', 'clientComm', 'delayRainDays', 'delayContractorDays'].includes(header.key) && onSort(header.key) }, header.label, !['actions', 'isClientDeliverable', 'isCritical', 'clientComm', 'delayRainDays', 'delayContractorDays'].includes(header.key) && React.createElement(SortIcon, { field: header.key })))))), React.createElement("tbody", { className: "divide-y divide-slate-200 bg-white" }, tasks.map(task => (React.createElement(TaskRow, { key: task.id, task: task, viewType: viewType, loggedInUserType: loggedInUserType, onUpdateTask: onUpdateTask, onEditTask: onEditTask, onAIUpdate: onAIUpdate, onShowNotes: onShowNotes, onClientComm: onClientComm, onToggleClientDeliverable: onToggleClientDeliverable, onToggleExpansion: onToggleExpansion, idToWbsMap: idToWbsMap })))))));
+            return (React.createElement("div", { className: "overflow-x-auto bg-white shadow-xl rounded-xl" }, React.createElement("table", { className: "min-w-full divide-y divide-slate-200" }, React.createElement("thead", { className: "bg-slate-50" }, React.createElement("tr", null, headers.map(header => (React.createElement("th", { key: header.key, scope: "col", className: "px-4 py-3.5 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-slate-100", onClick: () => !['actions', 'isClientDeliverable', 'isCritical', 'clientComm', 'delayWeatherDays', 'delayContractorDays'].includes(header.key) && onSort(header.key) }, header.label, !['actions', 'isClientDeliverable', 'isCritical', 'clientComm', 'delayWeatherDays', 'delayContractorDays'].includes(header.key) && React.createElement(SortIcon, { field: header.key })))))), React.createElement("tbody", { className: "divide-y divide-slate-200 bg-white" }, tasks.map(task => (React.createElement(TaskRow, { key: task.id, task: task, viewType: viewType, loggedInUserType: loggedInUserType, onUpdateTask: onUpdateTask, onEditTask: onEditTask, onAIUpdate: onAIUpdate, onShowNotes: onShowNotes, onClientComm: onClientComm, onToggleClientDeliverable: onToggleClientDeliverable, onToggleExpansion: onToggleExpansion, idToWbsMap: idToWbsMap })))))));
         };
 
         // --- TaskRow Component ---
@@ -1031,7 +1031,7 @@ H001,Handover & Documentation,5,28-04-2025,02-05-2025,Yes,T002,0,0`;
                             React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 whitespace-nowrap" }, formatDateForDisplay(task.actualStartDate)),
                             React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 whitespace-nowrap" }, formatDateForDisplay(task.actualEndDate)),
                             React.createElement("td", { className: "px-4 py-3 text-sm text-center cursor-pointer hover:bg-slate-100", onClick: handleCriticalToggle, title: "Toggle Critical Status" }, task.isCritical ? React.createElement(CheckCircle, { size: 18, className: "text-red-500" }) : React.createElement("span", { className: "text-slate-400" }, "-")),
-                            React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 text-center" }, task.delayRainDays || 0),
+                            React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 text-center" }, task.delayWeatherDays || 0),
                             React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 text-center" }, task.delayContractorDays || 0),
                             React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600" }, React.createElement("input", { type: "checkbox", className: "h-5 w-5 rounded text-sky-600 border-slate-300 focus:ring-sky-500 cursor-pointer", checked: !!task.isClientDeliverable, onChange: (e) => onToggleClientDeliverable(task, e.target.checked) })),
                             React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600" }, React.createElement("button", { onClick: () => onClientComm(task), className: "text-blue-500 hover:text-blue-600 text-xs p-1 rounded hover:bg-blue-50 flex items-center" }, React.createElement(MessageSquareIcon, { size: 16, className: "mr-1" }), "Comm ", React.createElement("span", { className: "text-xs text-gray-500 ml-1" }, clientCommentStatusIndicator))),
@@ -1064,26 +1064,26 @@ H001,Handover & Documentation,5,28-04-2025,02-05-2025,Yes,T002,0,0`;
             const [formData, setFormData] = useState({
                 ...task,
                 dependenciesWBS: (task.dependencies || []).map(depId => allTasks.find(t => t.id === depId)?.wbs).filter(Boolean).join(', '),
-                delayRainDays: task.delayRainDays || 0,
+                delayWeatherDays: task.delayWeatherDays || 0,
                 delayContractorDays: task.delayContractorDays || 0
             });
             useEffect(() => {
                 setFormData({
                     ...task,
                     dependenciesWBS: (task.dependencies || []).map(depId => allTasks.find(t => t.id === depId)?.wbs).filter(Boolean).join(', '),
-                    delayRainDays: task.delayRainDays || 0,
+                    delayWeatherDays: task.delayWeatherDays || 0,
                     delayContractorDays: task.delayContractorDays || 0
                 });
             }, [task, allTasks]);
             const handleChange = (e) => { const { name, value, type, checked } = e.target; setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : (type === 'number' ? parseInt(value, 10) || 0 : value) })); };
-            const handleSubmit = (e) => { e.preventDefault(); const depIds = (formData.dependenciesWBS || '').split(',').map(wbs => wbsToIdMap[wbs.trim()]).filter(Boolean); const finalData = { ...formData, progress: Math.max(0, Math.min(100, Number(formData.progress) || 0)), actualStartDate: formData.actualStartDate || null, actualEndDate: formData.actualEndDate || null, dependencies: depIds, delayRainDays: Number(formData.delayRainDays) || 0, delayContractorDays: Number(formData.delayContractorDays) || 0 }; delete finalData.dependenciesWBS; onSave(finalData); };
+            const handleSubmit = (e) => { e.preventDefault(); const depIds = (formData.dependenciesWBS || '').split(',').map(wbs => wbsToIdMap[wbs.trim()]).filter(Boolean); const finalData = { ...formData, progress: Math.max(0, Math.min(100, Number(formData.progress) || 0)), actualStartDate: formData.actualStartDate || null, actualEndDate: formData.actualEndDate || null, dependencies: depIds, delayWeatherDays: Number(formData.delayWeatherDays) || 0, delayContractorDays: Number(formData.delayContractorDays) || 0 }; delete finalData.dependenciesWBS; onSave(finalData); };
             return (React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm" }, React.createElement("div", { className: "modal-content p-6 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" }, React.createElement("h2", { className: "text-2xl font-semibold mb-6 text-sky-600" }, "Edit Task: ", task.taskName), React.createElement("form", { onSubmit: handleSubmit, className: "space-y-4" },
                 React.createElement("div", null, React.createElement("label", { htmlFor: "progress", className: "modal-label block text-sm font-medium mb-1" }, "Progress (%)"), React.createElement("input", { type: "number", name: "progress", id: "progress", value: formData.progress || 0, onChange: handleChange, min: "0", max: "100", className: "w-full p-2 modal-input rounded-md" })),
                 React.createElement("div", null, React.createElement("label", { htmlFor: "status", className: "modal-label block text-sm font-medium mb-1" }, "Status"), React.createElement("select", { name: "status", id: "status", value: formData.status, onChange: handleChange, className: "w-full p-2 modal-input rounded-md" }, TASK_STATUSES.map(s => React.createElement("option", { key: s, value: s }, s)))),
                 React.createElement("div", null, React.createElement("label", { htmlFor: "actualStartDate", className: "modal-label block text-sm font-medium mb-1" }, "Actual Start Date"), React.createElement("input", { type: "date", name: "actualStartDate", id: "actualStartDate", value: formatDateForInput(formData.actualStartDate), onChange: handleChange, className: "w-full p-2 modal-input rounded-md" })),
                 React.createElement("div", null, React.createElement("label", { htmlFor: "actualEndDate", className: "modal-label block text-sm font-medium mb-1" }, "Actual End Date"), React.createElement("input", { type: "date", name: "actualEndDate", id: "actualEndDate", value: formatDateForInput(formData.actualEndDate), onChange: handleChange, className: "w-full p-2 modal-input rounded-md" })),
                 React.createElement("div", { className: "grid grid-cols-2 gap-4" },
-                    React.createElement("div", null, React.createElement("label", { htmlFor: "delayRainDays", className: "modal-label block text-sm font-medium mb-1" }, "Rain Delay (Days)"), React.createElement("input", { type: "number", name: "delayRainDays", id: "delayRainDays", value: formData.delayRainDays || 0, onChange: handleChange, min: "0", className: "w-full p-2 modal-input rounded-md" })),
+                    React.createElement("div", null, React.createElement("label", { htmlFor: "delayWeatherDays", className: "modal-label block text-sm font-medium mb-1" }, "Weather Delay (Days)"), React.createElement("input", { type: "number", name: "delayWeatherDays", id: "delayWeatherDays", value: formData.delayWeatherDays || 0, onChange: handleChange, min: "0", className: "w-full p-2 modal-input rounded-md" })),
                     React.createElement("div", null, React.createElement("label", { htmlFor: "delayContractorDays", className: "modal-label block text-sm font-medium mb-1" }, "Contractor Delay (Days)"), React.createElement("input", { type: "number", name: "delayContractorDays", id: "delayContractorDays", value: formData.delayContractorDays || 0, onChange: handleChange, min: "0", className: "w-full p-2 modal-input rounded-md" }))
                 ),
                 React.createElement("div", null, React.createElement("label", { htmlFor: "dependenciesWBS", className: "modal-label block text-sm font-medium mb-1" }, "Dependencies (comma-separated WBS)"), React.createElement("input", { type: "text", name: "dependenciesWBS", id: "dependenciesWBS", value: formData.dependenciesWBS || '', onChange: handleChange, className: "w-full p-2 modal-input rounded-md", placeholder: "e.g., E001, P002" })),
