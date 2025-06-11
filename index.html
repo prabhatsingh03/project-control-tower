@@ -1,0 +1,1711 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Project Control Tower</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        /* Basic body styling for light mode consistency */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            /* slate-100 (Subtle light gray) */
+            color: #1e293b;
+            /* slate-800 (Dark gray text) */
+        }
+
+        .file-input-button {
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-weight: 600;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Gantt Chart Styles for Light Theme */
+        .gantt-chart-container {
+            width: 100%;
+            overflow-x: auto;
+            padding: 30px;
+            background-color: #e2e8f0;
+            /* slate-200 */
+            border-radius: 0.5rem;
+            margin-top: 20px;
+            border: 1px solid #cbd5e1;
+            /* slate-300 */
+            position: relative;
+        }
+
+        .gantt-row {
+            display: flex;
+            align-items: center;
+            margin: 5px;
+            font-size: 0.8rem;
+            height: 25px;
+        }
+
+        .gantt-task-name-column {
+            width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding-right: 10px;
+            color: #334155;
+            /* slate-700 */
+            flex-shrink: 0;
+        }
+
+        .gantt-bars-area {
+            flex-grow: 1;
+            position: relative;
+            height: 100%;
+            display: flex;
+            /* Use flex for segmented bars */
+        }
+
+        .gantt-bar-segment {
+            /* Base for all segments */
+            height: 20px;
+            top: 2.5px;
+            color: #ffffff;
+            font-size: 0.7rem;
+            line-height: 20px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            padding-left: 5px;
+            padding-right: 5px;
+            box-sizing: border-box;
+            cursor: default;
+            display: flex;
+            align-items: center;
+        }
+
+        .gantt-bar-segment:first-child {
+            border-top-left-radius: 3px;
+            border-bottom-left-radius: 3px;
+        }
+
+        .gantt-bar-segment:last-child {
+            border-top-right-radius: 3px;
+            border-bottom-right-radius: 3px;
+        }
+
+        .gantt-bar-segment.is-critical {
+            border: 2px solid #dc2626;
+            z-index: 5;
+        }
+
+        .gantt-timeline-header {
+            display: flex;
+            margin-bottom: 8px;
+            padding-left: 210px;
+            position: sticky;
+            top: 0;
+            background-color: #e2e8f0;
+            z-index: 10;
+            height: 30px;
+            align-items: flex-end;
+        }
+
+        .gantt-timeline-unit {
+            flex-shrink: 0;
+            text-align: center;
+            font-size: 0.7rem;
+            color: #475569;
+            border-left: 1px solid #cbd5e1;
+            padding: 2px 0;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .gantt-bar-Not-Started {
+            background-color: #9ca3af;
+        }
+
+        .gantt-bar-In-Progress {
+            background-color: #2563eb;
+        }
+
+        .gantt-bar-Completed {
+            background-color: #059669;
+        }
+
+        .gantt-bar-Delayed {
+            background-color: #dc2626;
+        }
+
+        .gantt-bar-On-Hold {
+            background-color: #d97706;
+        }
+
+        .gantt-bar-Ahead-of-Schedule {
+            background-color: #0284c7;
+        }
+
+        .gantt-bar-delay-Weather {
+            background-color: #bae6fd;
+            /* sky-200 */
+            color: #0369a1;
+            /* sky-700 */
+            border-left: 1px dashed #7dd3fc;
+        }
+
+        .gantt-bar-delay-contractor {
+            background-color: #fde68a;
+            /* amber-200 */
+            color: #b45309;
+            /* amber-700 */
+            border-left: 1px dashed #fbbf24;
+        }
+
+        .gantt-bar-delay-Client {
+            background-color: #fecaca;
+            /* red-200 */
+            color: #b91c1c;
+            /* red-700 */
+            border-left: 1px dashed #f87171;
+            /* red-400 */
+        }
+
+
+        .gantt-tooltip {
+            position: fixed;
+            background-color: #475569;
+            color: #f1f5f9;
+            border: 1px solid #334155;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            z-index: 1000;
+            pointer-events: none;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            max-width: 300px;
+        }
+
+        .gantt-tooltip strong {
+            color: #cbd5e1;
+        }
+
+        .modal-content {
+            background-color: #f8fafc;
+            color: #1e293b;
+            border: 1px solid #e2e8f0;
+        }
+
+        .modal-input {
+            background-color: #ffffff;
+            color: #1e293b;
+            border: 1px solid #cbd5e1;
+        }
+
+        .modal-input:focus {
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.4);
+        }
+
+        .modal-label {
+            color: #475569;
+        }
+
+        .comment-bubble {
+            padding: 8px 12px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .admin-comment {
+            background-color: #cffafe;
+            color: #0e7490;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .client-response {
+            background-color: #dcfce7;
+            color: #15803d;
+            margin-right: auto;
+            text-align: left;
+            font-style: italic;
+        }
+
+        .client-response-status-badge {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: 8px;
+            font-weight: 500;
+        }
+
+        /* Spinner for AI Modal */
+        .ai-spinner {
+            border: 4px solid #f3f3f3;
+            /* Light grey */
+            border-top: 4px solid #60a5fa;
+            /* Blue */
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        
+        /* Chatbot Styles */
+        .chatbot-container {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            z-index: 1000;
+        }
+
+        .chatbot-toggle-button {
+            background-color: #1d4ed8; /* blue-700 */
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        
+        .chatbot-toggle-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+        }
+
+        .chat-window {
+            position: absolute;
+            bottom: 80px; /* Position above the button */
+            right: 0;
+            width: 350px;
+            height: 450px;
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+            transform-origin: bottom right;
+        }
+        
+        @media (max-width: 400px) {
+            .chat-window {
+                width: calc(100vw - 2rem);
+                height: 60vh;
+                left: -1rem;
+            }
+        }
+
+        .chat-window.closed {
+            opacity: 0;
+            transform: scale(0.9);
+            pointer-events: none;
+        }
+
+        .chat-header {
+            background-color: #1d4ed8; /* blue-700 */
+            color: white;
+            padding: 1rem;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .chat-header button {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+        
+        .chat-messages {
+            flex-grow: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .chat-message {
+            padding: 0.5rem 1rem;
+            border-radius: 1rem;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        
+        .chat-message.user {
+            background-color: #eff6ff; /* blue-50 */
+            color: #1e3a8a; /* blue-900 */
+            align-self: flex-end;
+            border-bottom-right-radius: 0.25rem;
+        }
+        
+        .chat-message.model {
+            background-color: #f1f5f9; /* slate-100 */
+            color: #334155; /* slate-700 */
+            align-self: flex-start;
+            border-bottom-left-radius: 0.25rem;
+        }
+
+        .chat-input-form {
+            border-top: 1px solid #e2e8f0; /* slate-200 */
+            padding: 0.5rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .chat-input-form input {
+            flex-grow: 1;
+            border: 1px solid #cbd5e1; /* slate-300 */
+            border-radius: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+        }
+        .chat-input-form input:focus {
+            outline: none;
+            border: 2px;
+            border-color: #3b82f6; /* blue-500 */
+        }
+        
+        .chat-input-form button {
+            background-color: #2563eb; /* blue-600 */
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+        }
+
+        .chat-input-form button:disabled {
+            background-color: #93c5fd; /* blue-300 */
+            cursor: not-allowed;
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+        // --- SVG Icons ---
+        const SVGIcon = ({ size = 18, className = "", children }) => (React.createElement("svg", { className, xmlns: "http://www.w3.org/2000/svg", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round" }, children));
+        const ChevronDown = (props) => React.createElement(SVGIcon, props, React.createElement("polyline", { points: "6 9 12 15 18 9" }));
+        const ChevronUp = (props) => React.createElement(SVGIcon, props, React.createElement("polyline", { points: "18 15 12 9 6 15" }));
+        const Edit3 = (props) => React.createElement(SVGIcon, props, React.createElement("path", { d: "M12 20h9" }), React.createElement("path", { d: "M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" }));
+        const Zap = (props) => React.createElement(SVGIcon, props, React.createElement("polygon", { points: "13 2 3 14 12 14 11 22 21 10 12 10 13 2" }));
+        const CheckCircle = (props) => React.createElement(SVGIcon, props, React.createElement("path", { d: "M22 11.08V12a10 10 0 1 1-5.93-9.14" }), React.createElement("polyline", { points: "22 4 12 14.01 9 11.01" }));
+        const MessageSquareIcon = (props) => React.createElement(SVGIcon, props, React.createElement("path", { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" }));
+        const PlusCircle = (props) => React.createElement(SVGIcon, props, React.createElement("circle", { cx: "12", cy: "12", r: "10" }), React.createElement("line", { x1: "12", y1: "8", x2: "12", y2: "16" }), React.createElement("line", { x1: "8", y1: "12", x2: "16", y2: "12" }));
+        const Save = (props) => React.createElement(SVGIcon, props, React.createElement("path", { d: "M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" }), React.createElement("polyline", { points: "17 21 17 13 7 13 7 21" }), React.createElement("polyline", { points: "7 3 7 8 15 8" }));
+        const UploadCloud = (props) => React.createElement(SVGIcon, props, React.createElement("polyline", { points: "16 16 12 12 8 16" }), React.createElement("line", { x1: "12", y1: "12", x2: "12", y2: "21" }), React.createElement("path", { d: "M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" }), React.createElement("polyline", { points: "16 16 12 12 8 16" }));
+        const DownloadCloud = (props) => React.createElement(SVGIcon, props, React.createElement("polyline", { points: "8 17 12 21 16 17" }), React.createElement("line", { x1: "12", y1: "12", x2: "12", y2: "21" }), React.createElement("path", { d: "M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" }));
+        const AlertTriangle = (props) => React.createElement(SVGIcon, props, React.createElement("path", { d: "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" }), React.createElement("line", { x1: "12", y1: "9", x2: "12", y2: "13" }), React.createElement("line", { x1: "12", y1: "17", x2: "12.01", y2: "17" }));
+        const FileText = (props) => React.createElement(SVGIcon, props, React.createElement("path", { d: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" }), React.createElement("polyline", { points: "14 2 14 8 20 8" }), React.createElement("line", { x1: "16", y1: "13", x2: "8", y2: "13" }), React.createElement("line", { x1: "16", y1: "17", x2: "8", y2: "17" }), React.createElement("polyline", { points: "10 9 9 9 8 9" }));
+        const Image = (props) => React.createElement(SVGIcon, props, React.createElement("rect", { x: "3", y: "3", width: "18", height: "18", rx: "2", ry: "2" }), React.createElement("circle", { cx: "8.5", cy: "8.5", r: "1.5" }), React.createElement("polyline", { points: "21 15 16 10 5 21" }));
+        const LogOutIcon = (props) => React.createElement(SVGIcon, props, React.createElement("path", { d: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" }), React.createElement("polyline", { points: "16 17 21 12 16 7" }), React.createElement("line", { x1: "21", y1: "12", x2: "9", y2: "12" }));
+        const UserIcon = (props) => React.createElement(SVGIcon, props, React.createElement("path", { d: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" }), React.createElement("circle", { cx: "12", cy: "7", r: "4" }));
+        const LockIcon = (props) => React.createElement(SVGIcon, props, React.createElement("rect", { x: "3", y: "11", width: "18", height: "11", rx: "2", ry: "2" }), React.createElement("path", { d: "M7 11V7a5 5 0 0 1 10 0v4" }));
+        const ProjectIcon = (props) => React.createElement(SVGIcon, props, React.createElement("path", { d: "M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" }));
+        const SendIcon = (props) => React.createElement(SVGIcon, props, React.createElement("line", { x1: "22", y1: "2", x2: "11", y2: "13" }), React.createElement("polygon", { points: "22 2 15 22 11 13 2 9 22 2" }));
+        const EyeIcon = (props) => React.createElement(SVGIcon, props, React.createElement("path", { d: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" }), React.createElement("circle", { cx: "12", cy: "12", r: "3" }));
+        const CloudWeather = (props) => React.createElement(SVGIcon, props, React.createElement("path", { d: "M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" }));
+        const UserX = (props) => React.createElement(SVGIcon, props, React.createElement("path", { d: "M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" }), React.createElement("circle", { cx: "8.5", cy: "7", r: "4" }), React.createElement("line", { x1: "18", y1: "8", x2: "23", y2: "13" }), React.createElement("line", { x1: "23", y1: "8", x2: "18", y2: "13" }));
+        const UserCog = (props) => React.createElement(SVGIcon, props, React.createElement("path", { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" }), React.createElement("circle", { cx: "9", cy: "7", r: "4" }), React.createElement("circle", { cx: "19", cy: "11.5", r: "1.5" }), React.createElement("path", { d: "M19 8.25V10" }), React.createElement("path", { d: "M19 13v1.75" }), React.createElement("path", { d: "m21.56 9.44-1.25.72" }), React.createElement("path", { d: "m16.44 13.56-1.25.72" }), React.createElement("path", { d: "m21.56 13.56-1.25-.72" }), React.createElement("path", { d: "m16.44 9.44-1.25-.72" }));
+        const UploadIcon = (props) => React.createElement(SVGIcon, props, React.createElement("path", { d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" }), React.createElement("polyline", { points: "17 8 12 3 7 8" }), React.createElement("line", { x1: "12", y1: "3", x2: "12", y2: "15" }));
+        const AppIconPlaceholder = (props) => React.createElement("div", { className: `h-10 w-10 bg-slate-300 text-slate-500 flex items-center justify-center rounded text-sm font-bold ${props.className || ''}` }, "App");
+        const LightbulbIcon = (props) => React.createElement(SVGIcon, props, React.createElement("path", { d: "M15.06 9A7 7 0 0 1 9 15.06M9 15.06c-1.33-1.33-2.06-3.06-2.06-4.94A5 5 0 0 1 12 5a5 5 0 0 1 5 5c0 1.88-.73 3.61-2.06 4.94" }), React.createElement("path", { d: "M12 1a7 7 0 0 0-7 7c0 1.62.66 3.1 1.67 4.22" }), React.createElement("path", { d: "M8 22h8" }), React.createElement("path", { d: "M10 19v3" }), React.createElement("path", { d: "M14 19v3" }));
+        const ChatIcon = (props) => React.createElement(SVGIcon, props, React.createElement("path",{d:"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"}));
+
+        // --- Configuration & Constants ---
+        const APP_TITLE = "AI Project Control Tower";
+        const APP_SUBTITLE = "Sulphur Melting Project";
+        const LOCAL_STORAGE_KEY = 'aiProjectControlTowerTasks_v6_dynamic';
+        const AUTH_STORAGE_KEY = 'aiProjectControlTowerAuth_v1';
+        const ADMIN_USERNAME = "admin";
+        const ADMIN_PASSWORD = "password123";
+        const VALID_PROJECT_NUMBER = "PROJ789";
+        const TASK_STATUSES = ['Not Started', 'In Progress', 'Completed', 'Delayed', 'On Hold', 'Ahead of Schedule'];
+        const CLIENT_COMMENT_STATUSES = ['Acknowledged', 'Approved', 'Return with Comments', 'Hold for Review'];
+        const GEMINI_API_KEY = "AIzaSyC-e9tMROkfDJyReFeOEXCZ-oFkbtmEdjw";
+        const CHATBOT_GEMINI_API_KEY = "AIzaSyDUlQc3PlmiCM47nNEUPuiw1Knfx_pfQV8";
+
+
+        const generateUUID = () => {
+            // Simple UUID v4 generator
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                const r = Math.random() * 16 | 0,
+                    v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        };
+
+
+        // --- Helper Functions ---
+        const parseCSVDate = (dateStr) => {
+            if (!dateStr) return null;
+            let cleanedDateStr = String(dateStr).trim().replace(/^"|"$/g, '');
+
+            // Handle formats with time, like 'DD-MM-YYYY HH:MM' by taking the first part
+            if (cleanedDateStr.includes(' ')) {
+                cleanedDateStr = cleanedDateStr.split(' ')[0];
+            }
+
+            // Month mapping for 'DD-Mon-YY' format
+            const monthMap = {
+                'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04', 'May': '05', 'Jun': '06',
+                'Jul': '07', 'Aug': '08', 'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+            };
+
+            const parts = cleanedDateStr.split(/[-/]/); // Split by hyphen or slash
+            if (parts.length === 3) {
+                const p1 = parts[0];
+                const p2 = parts[1];
+                const p3 = parts[2];
+
+                // Check for<x_bin_660>-MM-dd
+                if (p1.length === 4 && p2.length === 2 && p3.length === 2) {
+                    return cleanedDateStr;
+                }
+                // Check for DD-MM-YYYY
+                else if (p1.length === 2 && p2.length === 2 && p3.length === 4) {
+                    return `${p3}-${p2}-${p1}`;
+                }
+                // Check for DD-Mon-YY
+                else if (p1.length >= 1 && p1.length <= 2 && monthMap[p2] && p3.length === 2) {
+                    const year = parseInt(`20${p3}`, 10);
+                    const month = monthMap[p2];
+                    const day = String(p1).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                }
+            }
+            console.warn("Could not parse date:", dateStr);
+            return null;
+        };
+
+        const formatDateForDisplay = (dateStr) => {
+            if (!dateStr) return 'N/A';
+            try {
+                const date = new Date(dateStr + 'T00:00:00Z'); // Treat as UTC to avoid timezone issues
+                if (isNaN(date.getTime())) return 'Invalid Date';
+                return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+            } catch (e) { return 'Invalid Date'; }
+        };
+
+        const formatDateForExport = (dateStr) => dateStr || '';
+        const formatDateForInput = (dateStr) => dateStr || '';
+
+        const parseCSV = (csvText) => {
+            const lines = csvText.trim().split(/\r\n|\n/);
+            if (lines.length < 2) throw new Error("CSV must have a header row and at least one data row.");
+
+            const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+            const lowerCaseHeaders = headers.map(h => h.toLowerCase());
+
+            // Define potential headers for each required field
+            const headerAliases = {
+                id: ['id', 'activity id'],
+                taskName: ['task name', 'activity name', 'name'],
+                start: ['start'],
+                finish: ['finish'],
+                predecessors: ['predecessors']
+            };
+
+            const headerIndices = {};
+            const missingRequired = [];
+
+            // Find index for 'ID'
+            const idHeader = headerAliases.id.find(h => lowerCaseHeaders.includes(h));
+            if (idHeader) {
+                headerIndices.id = lowerCaseHeaders.indexOf(idHeader);
+            } else {
+                missingRequired.push('ID / Activity ID');
+            }
+
+            // Find index for 'Task Name'
+            const taskNameHeader = headerAliases.taskName.find(h => lowerCaseHeaders.includes(h));
+            if (taskNameHeader) {
+                headerIndices.taskName = lowerCaseHeaders.indexOf(taskNameHeader);
+            } else {
+                missingRequired.push('Task Name / Activity Name / Name');
+            }
+
+            // Find index for 'Start'
+            const startHeader = headerAliases.start.find(h => lowerCaseHeaders.includes(h));
+            if (startHeader) {
+                headerIndices.start = lowerCaseHeaders.indexOf(startHeader);
+            } else {
+                missingRequired.push('Start');
+            }
+
+            // Find index for 'Finish'
+            const finishHeader = headerAliases.finish.find(h => lowerCaseHeaders.includes(h));
+            if (finishHeader) {
+                headerIndices.finish = lowerCaseHeaders.indexOf(finishHeader);
+            } else {
+                missingRequired.push('Finish');
+            }
+
+            if (missingRequired.length > 0) {
+                throw new Error(`CSV is missing required headers: ${missingRequired.join(', ')}.`);
+            }
+
+            // Find index for optional 'Predecessors'
+            const predecessorsHeader = headerAliases.predecessors.find(h => lowerCaseHeaders.includes(h));
+            headerIndices.predecessors = predecessorsHeader ? lowerCaseHeaders.indexOf(predecessorsHeader) : -1;
+
+            return lines.slice(1).map((line, rowIndex) => {
+                const values = [];
+                let currentVal = '';
+                let inQuotes = false;
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    if (char === '"' && (i === 0 || line[i - 1] !== '\\')) {
+                        inQuotes = !inQuotes;
+                    } else if (char === ',' && !inQuotes) {
+                        values.push(currentVal.trim());
+                        currentVal = '';
+                    } else {
+                        currentVal += char;
+                    }
+                }
+                values.push(currentVal.trim());
+
+                if (values.length > 0 && values.some(v => v.length > 0)) {
+                    const taskData = {
+                        id: values[headerIndices.id]?.replace(/^"|"$/g, ''),
+                        taskName: values[headerIndices.taskName]?.replace(/^"|"$/g, ''),
+                        start: values[headerIndices.start]?.replace(/^"|"$/g, ''),
+                        finish: values[headerIndices.finish]?.replace(/^"|"$/g, ''),
+                        predecessors: headerIndices.predecessors !== -1 ? values[headerIndices.predecessors]?.replace(/^"|"$/g, '') : ''
+                    };
+
+                    if (!taskData.id || !taskData.taskName) {
+                        console.warn(`Row ${rowIndex + 1} is missing required ID or Task Name. Skipping.`);
+                        return null;
+                    }
+
+                    return taskData;
+                }
+                return null;
+            }).filter(task => task !== null);
+        };
+
+        const parsePredecessorString = (predecessorString) => {
+            if (!predecessorString) return [];
+            // Split by comma for multiple predecessors
+            const parts = predecessorString.split(',');
+            const predecessorIds = parts.map(part => {
+                // Use parseInt to extract the leading number, which is the ID.
+                // This handles "3FS+4d", "26SS+30d", and "17" all correctly.
+                const id = parseInt(part.trim(), 10);
+                return isNaN(id) ? null : String(id);
+            }).filter(id => id !== null);
+            return predecessorIds;
+        };
+
+        const generateCSV = (tasksToExport, allTasksForDepLookup) => {
+            const headers = ["WBS", "Task Name", "Original Duration (Days)", "Planned Start Date", "Planned End Date", "Actual Start Date", "Actual End Date", "Progress (%)", "Status", "Is Critical", "Predecessors", "Weather Delay (Days)", "Contractor Delay (Days)", "Client Delay (Days)", "Is Client Deliverable", "Notes", "Client Communications Log"];
+            const rows = tasksToExport.map(task => {
+                const clientCommLog = (task.clientComments || []).map(cc =>
+                    `Admin (${formatDateForDisplay(cc.adminTimestamp)}): ${cc.adminComment.replace(/"/g, '""')}` +
+                    (cc.clientStatus ? ` | Client (${formatDateForDisplay(cc.clientResponseTimestamp)}): ${cc.clientStatus}` : '')
+                ).join(' || ');
+                return [
+                    task.wbs || '', task.taskName || '', task.originalDurationDays || 0,
+                    formatDateForExport(task.plannedStartDate), formatDateForExport(task.plannedEndDate),
+                    formatDateForExport(task.actualStartDate), formatDateForExport(task.actualEndDate),
+                    task.progress || 0, task.status || 'Not Started', task.isCritical ? 'Yes' : 'No',
+                    task.predecessorString || '', // Export the original string
+                    task.delayWeatherDays || 0, task.delayContractorDays || 0,
+                    task.delayClientDays || 0,
+                    task.isClientDeliverable ? 'Yes' : 'No',
+                    (task.notes || []).map(n => `${new Date(n.timestamp).toLocaleString()} [${n.source}]: ${n.text.replace(/"/g, '""')}`).join('; '),
+                    clientCommLog
+                ];
+            });
+            return [headers.join(','), ...rows.map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))].join('\n');
+        };
+
+        // --- OverallProgress Component ---
+        const OverallProgress = ({ tasks }) => {
+            const { useMemo } = React;
+            const overallProgress = useMemo(() => {
+                if (!tasks || tasks.length === 0) return 0;
+                const totalProgress = tasks.reduce((sum, task) => sum + (task.progress || 0), 0);
+                return Math.round(totalProgress / tasks.length);
+            }, [tasks]);
+            const totalWeatherDelay = useMemo(() => tasks.reduce((sum, task) => sum + (task.delayWeatherDays || 0), 0), [tasks]);
+            const totalContractorDelay = useMemo(() => tasks.reduce((sum, task) => sum + (task.delayContractorDays || 0), 0), [tasks]);
+            const totalClientDelay = useMemo(() => tasks.reduce((sum, task) => sum + (task.delayClientDays || 0), 0), [tasks]);
+
+            return (
+                React.createElement("div", { className: "mb-6 p-4 bg-white shadow rounded-lg" },
+                    React.createElement("h3", { className: "text-lg font-semibold text-slate-700 mb-2" }, "Overall Project Progress"),
+                    React.createElement("div", { className: "w-full bg-slate-200 rounded-full h-4 mb-2" },
+                        React.createElement("div", {
+                            className: "bg-blue-500 h-4 rounded-full text-xs font-medium text-blue-100 text-center p-0.5 leading-none",
+                            style: { width: `${overallProgress}%` }
+                        }, `${overallProgress}%`)
+                    ),
+                    (totalWeatherDelay > 0 || totalContractorDelay > 0 || totalClientDelay > 0) && React.createElement("div", { className: "text-xs text-slate-500 mt-1 flex flex-col sm:flex-row flex-wrap justify-between gap-x-4" },
+                        totalWeatherDelay > 0 && React.createElement("span", null, "Weather Delay: ", totalWeatherDelay, " days"),
+                        totalContractorDelay > 0 && React.createElement("span", null, "Contractor Delay: ", totalContractorDelay, " days"),
+                        totalClientDelay > 0 && React.createElement("span", null, "Client Delay: ", totalClientDelay, " days")
+                    )
+                )
+            );
+        };
+
+        // --- GanttChart Component ---
+        const GanttChart = ({ tasks }) => {
+            const { useState, useMemo, useCallback } = React;
+            const DAY_WIDTH = 30;
+            const GANTT_CHART_AREA_ID = "gantt-chart-render-area";
+            const [tooltip, setTooltip] = useState({ visible: false, content: null, x: 0, y: 0 });
+
+            const handleMouseEnter = (event, task, segmentType = 'main') => {
+                let details = [
+                    React.createElement("p", { key: "name" }, React.createElement("strong", null, "Task: "), task.taskName),
+                    React.createElement("p", { key: "wbs" }, React.createElement("strong", null, "WBS: "), task.wbs),
+                    React.createElement("p", { key: "planned" }, React.createElement("strong", null, "Planned: "), `${formatDateForDisplay(task.plannedStartDate)} - ${formatDateForDisplay(task.plannedEndDate)}`),
+                    React.createElement("p", { key: "status" }, React.createElement("strong", null, "Status: "), task.status),
+                    React.createElement("p", { key: "progress" }, React.createElement("strong", null, "Progress: "), `${task.progress || 0}%`)
+                ];
+                if (task.delayWeatherDays > 0) { details.push(React.createElement("p", { key: "Weather" }, React.createElement("strong", null, "Weather Delay: "), `${task.delayWeatherDays} day(s)`)); }
+                if (task.delayContractorDays > 0) { details.push(React.createElement("p", { key: "contractor" }, React.createElement("strong", null, "Contractor Delay: "), `${task.delayContractorDays} day(s)`)); }
+                if (task.delayClientDays > 0) { details.push(React.createElement("p", { key: "client" }, React.createElement("strong", null, "Client Delay: "), `${task.delayClientDays} day(s)`)); }
+                if (segmentType === 'Weather') { details.push(React.createElement("p", { key: "segtype", className: "mt-1 pt-1 border-t border-slate-500 text-sky-300" }, "Segment: Weather Delay")); }
+                else if (segmentType === 'contractor') { details.push(React.createElement("p", { key: "segtype", className: "mt-1 pt-1 border-t border-slate-500 text-amber-300" }, "Segment: Contractor Delay")); }
+                else if (segmentType === 'Client') { details.push(React.createElement("p", { key: "segtype", className: "mt-1 pt-1 border-t border-slate-500 text-red-300" }, "Segment: Client Delay")); }
+                const content = React.createElement("div", null, ...details);
+                setTooltip({ visible: true, content: content, x: event.clientX + 15, y: event.clientY + 15 });
+            };
+            const handleMouseLeave = () => { setTooltip({ visible: false, content: null, x: 0, y: 0 }); };
+
+            const { projectStartDate, totalDays, timelineUnits } = useMemo(() => {
+                if (!tasks || tasks.length === 0) return { projectStartDate: null, totalDays: 0, timelineUnits: [] };
+                let minDate = null, maxDate = null;
+                tasks.forEach(task => {
+                    if (task.plannedStartDate) { const d = new Date(task.plannedStartDate + 'T00:00:00Z'); if (!minDate || d < minDate) minDate = d; }
+                    if (task.plannedEndDate) {
+                        let effectiveEndDate = new Date(task.plannedEndDate + 'T00:00:00Z');
+                        effectiveEndDate.setDate(effectiveEndDate.getDate() + (task.delayWeatherDays || 0) + (task.delayContractorDays || 0) + (task.delayClientDays || 0));
+                        if (!maxDate || effectiveEndDate > maxDate) maxDate = effectiveEndDate;
+                    }
+                });
+                if (!minDate || !maxDate) return { projectStartDate: null, totalDays: 0, timelineUnits: [] };
+                const pStartDate = new Date(minDate); const pEndDate = new Date(maxDate);
+                pEndDate.setDate(pEndDate.getDate() + 1);
+                const tDays = Math.max(1, Math.ceil(Math.abs(pEndDate - pStartDate) / (1000 * 60 * 60 * 24)));
+                const units = []; let currentDate = new Date(pStartDate);
+                for (let i = 0; i < tDays; i++) {
+                    units.push({ date: new Date(currentDate), label: currentDate.toLocaleDateString('en-US', { day: 'numeric', timeZone: 'UTC' }), monthLabel: i === 0 || currentDate.getDate() === 1 ? currentDate.toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' }) : null, });
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+                return { projectStartDate: pStartDate, totalDays: tDays, timelineUnits: units };
+            }, [tasks]);
+
+            if (!projectStartDate) return React.createElement("div", { className: "text-center text-gray-400 py-4" }, "Not enough data for Gantt chart.");
+            const getBarColorClass = (status) => `gantt-bar-${String(status || 'Not Started').replace(/\s+/g, '-')}`;
+
+            return (
+                React.createElement("div", { id: GANTT_CHART_AREA_ID, className: "gantt-chart-container" },
+                    React.createElement("div", { className: "gantt-timeline-header", style: { width: `${210 + totalDays * DAY_WIDTH}px` } },
+                        timelineUnits.map((unit, index) => (
+                            React.createElement("div", { key: index, className: "gantt-timeline-unit", style: { width: `${DAY_WIDTH}px` } },
+                                unit.monthLabel && React.createElement("div", { style: { position: 'absolute', top: '-18px', left: `${index * DAY_WIDTH}px`, fontWeight: 'bold', fontSize: '0.65rem' } }, unit.monthLabel),
+                                unit.label
+                            )
+                        ))
+                    ),
+                    tasks.map(task => {
+                        if (!task.plannedStartDate || !task.plannedEndDate) return null;
+                        const taskStartDate = new Date(task.plannedStartDate + 'T00:00:00Z');
+                        const taskPlannedEndDate = new Date(task.plannedEndDate + 'T00:00:00Z');
+                        if (isNaN(taskStartDate.getTime()) || isNaN(taskPlannedEndDate.getTime())) return null;
+
+                        const startOffsetDays = Math.max(0, Math.ceil((taskStartDate - projectStartDate) / (1000 * 60 * 60 * 24)));
+                        const plannedDurationDays = Math.max(1, Math.ceil((taskPlannedEndDate - taskStartDate) / (1000 * 60 * 60 * 24)) + 1);
+                        const weatherDelay = task.delayWeatherDays || 0; const contractorDelay = task.delayContractorDays || 0; const clientDelay = task.delayClientDays || 0;
+                        const plannedWidth = plannedDurationDays * DAY_WIDTH; const weatherDelayWidth = weatherDelay * DAY_WIDTH; const contractorDelayWidth = contractorDelay * DAY_WIDTH; const clientDelayWidth = clientDelay * DAY_WIDTH;
+                        let mainBarWidth = plannedWidth;
+                        const barSegments = [];
+                        if (mainBarWidth > 0) {
+                            barSegments.push(
+                                React.createElement("div", {
+                                    key: `${task.id}-main`, className: `gantt-bar-segment ${getBarColorClass(task.status)} ${task.isCritical ? 'is-critical' : ''}`, style: { width: `${mainBarWidth}px` },
+                                    onMouseEnter: (e) => handleMouseEnter(e, task, 'main'), onMouseLeave: handleMouseLeave, title: `${task.taskName} (Planned)`
+                                }, task.wbs)
+                            );
+                        }
+                        if (weatherDelay > 0) {
+                            barSegments.push(
+                                React.createElement("div", {
+                                    key: `${task.id}-weather`, className: `gantt-bar-segment gantt-bar-delay-Weather ${task.isCritical ? 'is-critical' : ''}`, style: { width: `${weatherDelayWidth}px` },
+                                    onMouseEnter: (e) => handleMouseEnter(e, task, 'Weather'), onMouseLeave: handleMouseLeave, title: `${task.taskName} (Weather Delay: ${weatherDelay}d)`
+                                }, React.createElement(CloudWeather, { size: 12 }))
+                            );
+                        }
+                        if (contractorDelay > 0) {
+                            barSegments.push(
+                                React.createElement("div", {
+                                    key: `${task.id}-contractor`, className: `gantt-bar-segment gantt-bar-delay-contractor ${task.isCritical ? 'is-critical' : ''}`, style: { width: `${contractorDelayWidth}px` },
+                                    onMouseEnter: (e) => handleMouseEnter(e, task, 'contractor'), onMouseLeave: handleMouseLeave, title: `${task.taskName} (Contractor Delay: ${contractorDelay}d)`
+                                }, React.createElement(UserX, { size: 12 }))
+                            );
+                        }
+                        if (clientDelay > 0) {
+                            barSegments.push(
+                                React.createElement("div", {
+                                    key: `${task.id}-client`, className: `gantt-bar-segment gantt-bar-delay-Client ${task.isCritical ? 'is-critical' : ''}`, style: { width: `${clientDelayWidth}px` },
+                                    onMouseEnter: (e) => handleMouseEnter(e, task, 'Client'), onMouseLeave: handleMouseLeave, title: `${task.taskName} (Client Delay: ${clientDelay}d)`
+                                }, React.createElement(UserCog, { size: 12 }))
+                            );
+                        }
+                        return (
+                            React.createElement("div", { key: task.id, className: "gantt-row" },
+                                React.createElement("div", { className: "gantt-task-name-column", title: task.taskName }, task.taskName),
+                                React.createElement("div", { className: "gantt-bars-area", style: { width: `${totalDays * DAY_WIDTH}px` } },
+                                    React.createElement("div", { className: "flex absolute", style: { left: `${startOffsetDays * DAY_WIDTH}px`, top: '2.5px', height: '20px' } }, ...barSegments)
+                                )
+                            )
+                        );
+                    }).filter(Boolean),
+                    tooltip.visible && React.createElement("div", { className: "gantt-tooltip", style: { top: `${tooltip.y}px`, left: `${tooltip.x}px` } }, tooltip.content)
+                )
+            );
+        };
+        
+        // --- Chatbot Component ---
+        const Chatbot = ({ projectTasks }) => {
+            const { useState, useEffect, useRef } = React;
+            const [isOpen, setIsOpen] = useState(false);
+            const [messages, setMessages] = useState([]);
+            const [inputValue, setInputValue] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+            const messagesEndRef = useRef(null);
+
+            const scrollToBottom = () => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            };
+
+            useEffect(scrollToBottom, [messages]);
+            
+            useEffect(() => {
+                if(isOpen) {
+                    setMessages([
+                        { role: 'model', text: 'Hello! I am your project assistant. How can I help you with the Sulphur Melting Project today?' }
+                    ]);
+                }
+            }, [isOpen]);
+
+            const handleSendMessage = async (e) => {
+                e.preventDefault();
+                if (!inputValue.trim() || isLoading) return;
+
+                const userMessage = { role: 'user', text: inputValue };
+                const newMessages = [...messages, userMessage];
+                setMessages(newMessages);
+                setInputValue('');
+                setIsLoading(true);
+
+                // Prepare context for the AI with more detailed information
+                const projectContext = `
+                    You are a helpful project assistant for the "${APP_SUBTITLE}".
+                    The user is viewing a project control tower application.
+                    Here is a summary of the current project tasks in JSON format (only use this data to answer questions):
+                    ${projectTasks.map(t => {
+                        const taskSummary = {
+                            wbs: t.wbs,
+                            name: t.taskName,
+                            status: t.status,
+                            progress: t.progress,
+                            isCritical: t.isCritical,
+                            plannedStart: formatDateForDisplay(t.plannedStartDate),
+                            plannedEnd: formatDateForDisplay(t.plannedEndDate),
+                            actualStart: formatDateForDisplay(t.actualStartDate),
+                            actualEnd: formatDateForDisplay(t.actualEndDate),
+                            delays: {
+                                weather: t.delayWeatherDays || 0,
+                                contractor: t.delayContractorDays || 0,
+                                client: t.delayClientDays || 0,
+                            },
+                            notes: (t.notes || []).map(n => `[${n.source}] ${n.text}`).join(' | '),
+                        };
+                        return JSON.stringify(taskSummary);
+                    }).join('\n')}
+                    
+                    Keep your answers concise and directly related to the project data provided.
+                    If you see a date as 'N/A', it means the date is not set.
+                    If you don't know the answer from the data, say that you don't have that information. Do not make up information.
+                `;
+
+                const chatHistory = [
+                    { role: "user", parts: [{ text: projectContext }] },
+                    { role: "model", parts: [{ text: "Understood. I will act as a project assistant and use only the provided data." }] },
+                    ...newMessages.map(msg => ({
+                        role: msg.role,
+                        parts: [{ text: msg.text }]
+                    }))
+                ];
+                
+                try {
+                    const payload = { contents: chatHistory };
+                    const apiKey = CHATBOT_GEMINI_API_KEY;
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API request failed with status ${response.status}`);
+                    }
+
+                    const result = await response.json();
+
+                    let modelResponse = "Sorry, I couldn't process that. Please try again.";
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        modelResponse = result.candidates[0].content.parts[0].text;
+                    }
+                    setMessages(prev => [...prev, { role: 'model', text: modelResponse }]);
+                } catch (error) {
+                    console.error("Error calling Gemini API:", error);
+                    setMessages(prev => [...prev, { role: 'model', text: `Sorry, there was an error: ${error.message}` }]);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+            
+            return (
+                React.createElement('div', { className: 'chatbot-container' },
+                    React.createElement('div', { className: `chat-window ${!isOpen ? 'closed' : ''}` },
+                        React.createElement('div', { className: 'chat-header' },
+                            React.createElement('span', null, 'Project Assistant'),
+                            React.createElement('button', { onClick: () => setIsOpen(false) }, '×')
+                        ),
+                        React.createElement('div', { className: 'chat-messages' },
+                            messages.map((msg, index) => (
+                                React.createElement('div', { key: index, className: `chat-message ${msg.role}` }, msg.text)
+                            )),
+                            isLoading && React.createElement('div', { className: 'chat-message model' }, 
+                                React.createElement('div', { className: 'flex items-center gap-2' },
+                                    React.createElement('div', {className: 'w-2 h-2 bg-slate-400 rounded-full animate-pulse'}),
+                                    React.createElement('div', {className: 'w-2 h-2 bg-slate-400 rounded-full animate-pulse delay-75'}),
+                                    React.createElement('div', {className: 'w-2 h-2 bg-slate-400 rounded-full animate-pulse delay-150'})
+                                )
+                            ),
+                            React.createElement('div', { ref: messagesEndRef })
+                        ),
+                        React.createElement('form', { className: 'chat-input-form', onSubmit: handleSendMessage },
+                            React.createElement('input', {
+                                type: 'text',
+                                placeholder: 'Ask about the project...',
+                                value: inputValue,
+                                onChange: (e) => setInputValue(e.target.value),
+                                disabled: isLoading
+                            }),
+                            React.createElement('button', { type: 'submit', disabled: isLoading || !inputValue.trim() },
+                                React.createElement(SendIcon, { size: 16 })
+                            )
+                        )
+                    ),
+                    React.createElement('button', {
+                        className: 'chatbot-toggle-button',
+                        onClick: () => setIsOpen(prev => !prev)
+                    }, React.createElement(ChatIcon, { size: 28 }))
+                )
+            );
+        };
+
+
+        // --- Main Application Component (App) ---
+        const App = () => {
+            const { useState, useEffect, useCallback, useMemo } = React;
+            const [loggedInUserType, setLoggedInUserType] = useState(null);
+            const [loginAttemptType, setLoginAttemptType] = useState('admin');
+            const [loginError, setLoginError] = useState('');
+            const [uploadedLogo, setUploadedLogo] = useState(null);
+            const [tasks, setTasks] = useState([]);
+            const [isLoading, setIsLoading] = useState(true);
+            const [appError, setAppError] = useState(null);
+            const [successMessage, setSuccessMessage] = useState('');
+            const [currentView, setCurrentView] = useState('admin');
+            const [showEditModal, setShowEditModal] = useState(false);
+            const [showAIModal, setShowAIModal] = useState(false);
+            const [showNotesModal, setShowNotesModal] = useState(false);
+            const [showClientCommModal, setShowClientCommModal] = useState(false);
+            const [selectedTask, setSelectedTask] = useState(null);
+            const [searchTerm, setSearchTerm] = useState('');
+            const [sortBy, setSortBy] = useState({ field: 'plannedStartDate', order: 'asc' });
+
+            useEffect(() => {
+                const storedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
+                if (storedAuth) {
+                    try {
+                        const authData = JSON.parse(storedAuth);
+                        if (authData.userType && (authData.userType === 'admin' || authData.userType === 'client')) {
+                            setLoggedInUserType(authData.userType);
+                            if (authData.userType === 'client') setCurrentView('client');
+                        }
+                    } catch (e) { localStorage.removeItem(AUTH_STORAGE_KEY); }
+                } else {
+                    setIsLoading(false);
+                }
+                
+                fetch('/api/logo')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.path) {
+                            setUploadedLogo(data.path + '?' + new Date().getTime());
+                        }
+                    })
+                    .catch(err => console.log('No logo found on server.'));
+            }, []);
+
+            const loadInitialData = useCallback(() => {
+                setIsLoading(true);
+                fetch('/api/load')
+                    .then(res => {
+                        if (!res.ok) throw new Error('Fetch failed');
+                        return res.json();
+                    })
+                    .then(raw => {
+                        let normalized;
+                        if (raw.length > 0 && raw[0].wbs !== undefined) {
+                            normalized = raw;
+                        } else {
+                            normalized = raw.map(t => ({
+                                id: t.id || String(t.ID) || generateUUID(),
+                                wbs: String(t.ID),
+                                taskName: t.Name || t['Task Name'] || '',
+                                plannedStartDate: parseCSVDate(t.Start || ''),
+                                plannedEndDate: parseCSVDate(t.Finish || ''),
+                                predecessorString: t.Predecessors || '',
+                                originalDurationDays: parseInt(t.Duration, 10) || 0,
+                                actualStartDate: null,
+                                actualEndDate: null,
+                                progress: 0,
+                                status: 'Not Started',
+                                notes: [],
+                                isClientDeliverable: false,
+                                isCritical: false,
+                                dependencies: [],
+                                clientComments: [],
+                                delayWeatherDays: 0,
+                                delayContractorDays: 0,
+                                delayClientDays: 0,
+                                isExpanded: false
+                            }));
+                        }
+                        setTasks(normalized);
+                    })
+                    .catch(err => setAppError('Could not load tasks: ' + err.message))
+                    .finally(() => setIsLoading(false));
+            }, []);
+
+            useEffect(() => {
+                if(loggedInUserType){
+                    loadInitialData();
+                }
+            }, [loggedInUserType, loadInitialData]);
+
+            const handleAdminLogin = (username, password) => {
+                if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+                    setLoggedInUserType('admin'); setCurrentView('admin'); localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ userType: 'admin' })); setLoginError('');
+                }
+                else { setLoginError('Invalid admin username or password.'); }
+            };
+            const handleClientLogin = (projectNumber) => {
+                if (projectNumber === VALID_PROJECT_NUMBER) {
+                    setLoggedInUserType('client'); setCurrentView('client'); localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ userType: 'client', project: projectNumber })); setLoginError('');
+                } else { setLoginError('Invalid project number.'); }
+            };
+            const handleLogout = () => { setLoggedInUserType(null); localStorage.removeItem(AUTH_STORAGE_KEY); setTasks([]); setCurrentView('admin'); };
+
+            const handleUpdateTask = useCallback((taskId, updatedData) => {
+                const updatedTasks = tasks.map(t => t.id === taskId ? { ...t, ...updatedData } : t);
+                fetch('/api/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedTasks)
+                })
+                    .then(res => {
+                        if (!res.ok) throw new Error('Save failed');
+                        return res.json();
+                    })
+                    .then(() => {
+                        setTasks(updatedTasks);
+                        setSuccessMessage('Saved successfully');
+                    })
+                    .catch(err => setAppError('Save error: ' + err.message));
+            }, [tasks]);
+
+
+            const handleFileUpload = event => {
+                const file = event.target.files[0];
+                if (!file) return;
+                const formData = new FormData();
+                formData.append('file', file);
+                fetch('/api/upload', { method: 'POST', body: formData })
+                    .then(res => { if (!res.ok) throw new Error('Upload failed'); return res.json(); })
+                    .then(() => {
+                        loadInitialData();
+                        setSuccessMessage('CSV imported');
+                    })
+                    .catch(err => setAppError('CSV upload failed: ' + err.message));
+                event.target.value = null;
+            };
+
+            const handleExportCSV = () => {
+                try {
+                    let tasksToExport;
+                    if (currentView === 'client') {
+                        tasksToExport = tasks.filter(task => task.isClientDeliverable);
+                    } else {
+                        tasksToExport = tasks;
+                    }
+                    const csvData = generateCSV(tasksToExport, tasks);
+                    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement("a");
+                    if (link.download !== undefined) {
+                        const url = URL.createObjectURL(blob);
+                        link.setAttribute("href", url);
+                        link.setAttribute("download", "ai_project_control_tower_tasks.csv");
+                        link.style.visibility = 'hidden';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        setSuccessMessage('Tasks exported successfully as CSV.');
+                        setAppError(null);
+                    } else {
+                        setAppError('CSV export not supported by your browser.');
+                        setSuccessMessage('');
+                    }
+                } catch (err) {
+                    console.error("Error exporting CSV:", err);
+                    setAppError("Failed to export tasks: " + err.message);
+                    setSuccessMessage('');
+                }
+            };
+
+            const handleExportPDF = () => {
+                try {
+                    const { jsPDF } = window.jspdf; const doc = new jsPDF();
+                    doc.setFontSize(18); doc.text(APP_TITLE, 14, 22); doc.setFontSize(11); doc.setTextColor(100);
+
+                    let tasksForPdf;
+                    if (currentView === 'client') {
+                        tasksForPdf = tasks.filter(task => task.isClientDeliverable);
+                    } else {
+                        tasksForPdf = tasks;
+                    }
+
+                    const head = [['WBS', 'Task Name', 'Planned Start', 'Planned End', 'Status', 'Progress (%)', 'Critical']];
+                    const body = tasksForPdf.map(task => [task.wbs, task.taskName, formatDateForDisplay(task.plannedStartDate), formatDateForDisplay(task.plannedEndDate), task.status, task.progress || 0, task.isCritical ? 'Yes' : 'No']);
+
+                    doc.autoTable({
+                        startY: 30,
+                        head: head,
+                        body: body,
+                        theme: 'grid',
+                        headStyles: { fillColor: [186, 230, 253], textColor: [30, 41, 59] },
+                        styles: { fontSize: 8, cellPadding: 2, textColor: [30, 41, 59] },
+                        columnStyles: { 0: { cellWidth: 20 }, 1: { cellWidth: 'auto' } }
+                    });
+                    doc.save('ai_project_control_tower_schedule.pdf');
+                    setSuccessMessage('Schedule exported successfully as PDF.'); setAppError(null);
+                } catch (err) { console.error("Error exporting PDF:", err); setAppError("Failed to export PDF: " + err.message + ". Make sure jsPDF and autoTable are loaded."); setSuccessMessage(''); }
+            };
+            const handleExportGanttImage = () => {
+                try {
+                    const ganttElement = document.getElementById('gantt-chart-render-area');
+                    if (ganttElement && window.html2canvas) {
+                        window.html2canvas(ganttElement, { allowTaint: true, useCORS: true, backgroundColor: '#e2e8f0' }).then(canvas => {
+                            const image = canvas.toDataURL('image/png'); const link = document.createElement('a');
+                            link.download = 'gantt_chart_export.png'; link.href = image; link.click();
+                            setSuccessMessage('Gantt chart exported successfully as Image.'); setAppError(null);
+                        }).catch(err => { console.error("Error in html2canvas:", err); setAppError("Failed to capture Gantt chart: " + err.message); setSuccessMessage(''); });
+                    } else { setAppError('Gantt chart element not found or html2canvas not loaded.'); setSuccessMessage(''); }
+                } catch (err) { console.error("Error exporting Gantt image:", err); setAppError("Failed to export Gantt image: " + err.message); setSuccessMessage(''); }
+            };
+            const handleAddClientComment = (taskId, commentText) => {
+                const task = tasks.find(t => t.id === taskId);
+                if (!task) return setAppError('Task not found');
+                const newComment = { id: generateUUID(), adminComment: commentText, adminTimestamp: new Date().toISOString() };
+                handleUpdateTask(taskId, { clientComments: [...(task.clientComments || []), newComment] });
+            };
+
+            const handleClientCommentResponse = (taskId, commentId, status) => {
+                const task = tasks.find(t => t.id === taskId);
+                if (!task) return setAppError('Task not found');
+                const updatedComments = task.clientComments.map(c =>
+                    c.id === commentId ? { ...c, clientStatus: status, clientResponseTimestamp: new Date().toISOString() } : c
+                );
+                handleUpdateTask(taskId, { clientComments: updatedComments });
+            };
+
+            const toggleTaskExpansion = (taskId) => { setTasks(prevTasks => prevTasks.map(task => task.id === taskId ? { ...task, isExpanded: !task.isExpanded } : task)); };
+            const openEditModal = (task) => { setSelectedTask(task); setShowEditModal(true); };
+            const openAIModal = (task) => { setSelectedTask(task); setShowAIModal(true); };
+            const openNotesModal = (task) => { setSelectedTask(task); setShowNotesModal(true); };
+            const openClientCommModal = (task) => { setSelectedTask(task); setShowClientCommModal(true); };
+            const handleLogoUpload = (event) => {
+                const file = event.target.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    fetch('/api/logo', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'uploaded') {
+                            setUploadedLogo(data.path + '?' + new Date().getTime());
+                            setSuccessMessage("Logo uploaded successfully!");
+                        } else {
+                            throw new Error(data.message || 'Upload failed');
+                        }
+                    })
+                    .catch(err => setAppError('Logo upload failed: ' + err.message));
+                } else {
+                    setAppError("Please select a valid image file (PNG, JPG, SVG).");
+                }
+                event.target.value = null;
+            };
+            const filteredAndSortedTasks = useMemo(() => {
+                const safeTasks = Array.isArray(tasks) ? tasks : []; let filtered = safeTasks;
+                if (currentView === 'client') { filtered = safeTasks.filter(task => task.isClientDeliverable); }
+                if (searchTerm) { filtered = (Array.isArray(filtered) ? filtered : []).filter(task => (task.taskName || '').toLowerCase().includes(searchTerm.toLowerCase()) || (task.wbs || '').toLowerCase().includes(searchTerm.toLowerCase())); }
+                return [...(Array.isArray(filtered) ? filtered : [])].sort((a, b) => {
+                    const fieldA = a[sortBy.field]; const fieldB = b[sortBy.field]; let comparison = 0;
+                    if (fieldA > fieldB) comparison = 1; else if (fieldA < fieldB) comparison = -1;
+                    return sortBy.order === 'asc' ? comparison : comparison * -1;
+                });
+            }, [tasks, currentView, searchTerm, sortBy]);
+            const handleSort = (field) => { setSortBy(prevSortBy => ({ field, order: prevSortBy.field === field && prevSortBy.order === 'asc' ? 'desc' : 'asc' })); };
+            useEffect(() => {
+                if (successMessage) { const timer = setTimeout(() => setSuccessMessage(''), 5000); return () => clearTimeout(timer); }
+                if (appError) { const timer = setTimeout(() => setAppError(null), 7000); return () => clearTimeout(timer); }
+            }, [successMessage, appError]);
+
+            if (isLoading) {
+                 return React.createElement("div", { key: "loader", className: "flex items-center justify-center h-screen" }, React.createElement("div", { className: "animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500" }), React.createElement("p", { className: "ml-4 text-xl text-slate-600" }, "Loading..."));
+            }
+
+            if (!loggedInUserType) {
+                return React.createElement(LoginForm, { onAdminLogin: handleAdminLogin, onClientLogin: handleClientLogin, loginError: loginError, setLoginError: setLoginError, loginAttemptType: loginAttemptType, setLoginAttemptType: setLoginAttemptType, onLogoUpload: handleLogoUpload, currentLogo: uploadedLogo });
+            }
+
+            const mainReturnChildren = [
+                React.createElement("header", { key: "header", className: "mb-6 p-4 bg-white shadow-md rounded-lg" },
+                    React.createElement("div", { className: "flex flex-col sm:flex-row items-center justify-between" },
+                        React.createElement("div", { className: "flex items-center space-x-3 mb-4 sm:mb-0" }, 
+                          uploadedLogo ? React.createElement("img", { src: uploadedLogo, alt: "App Logo", className: "h-10 w-auto" }) : React.createElement(AppIconPlaceholder, { className: "text-sky-600" }), 
+                          React.createElement("div", null, 
+                            React.createElement("h1", { className: "text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-600 to-blue-700" }, APP_TITLE),
+                            React.createElement("h2", { className: "text-xs sm:text-sm text-slate-500" }, APP_SUBTITLE)
+                          )
+                        ),
+                        React.createElement("button", { onClick: handleLogout, className: "w-full sm:w-auto px-4 py-2 text-sm font-medium text-slate-700 bg-slate-200 hover:bg-slate-300 rounded-lg flex items-center justify-center" }, React.createElement(LogOutIcon, { size: 16, className: "mr-2" }), "Logout")
+                    ),
+                    React.createElement("p", { className: "text-xs text-center text-slate-500 mt-4" }, `Logged in as: ${loggedInUserType === 'admin' ? 'Administrator' : 'Client (Project ' + VALID_PROJECT_NUMBER + ')'}.`),
+                    React.createElement("div", { className: "mt-4 flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-4" },
+                        loggedInUserType === 'admin' && React.createElement("button", { onClick: () => setCurrentView('admin'), className: `w-full sm:w-auto px-6 py-2 rounded-lg font-semibold transition-all duration-300 ${currentView === 'admin' ? 'bg-blue-600 text-white shadow-lg transform scale-105' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}` }, "Admin View"),
+                        React.createElement("button", { onClick: () => setCurrentView('client'), className: `w-full sm:w-auto px-6 py-2 rounded-lg font-semibold transition-all duration-300 ${currentView === 'client' ? 'bg-teal-600 text-white shadow-lg transform scale-105' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}` }, "Client View")
+                    )
+                )
+            ];
+            if (successMessage) { mainReturnChildren.push(React.createElement("div", { key: "success-msg", className: "mb-4 p-3 bg-green-100 border border-green-300 text-green-700 rounded-lg text-sm", role: "alert" }, successMessage)); }
+            if (appError) { mainReturnChildren.push(React.createElement("div", { key: "error-msg", className: "mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg text-sm", role: "alert" }, React.createElement("strong", null, "Error: "), appError, appError.includes("initial schedule") && React.createElement("button", { onClick: () => { localStorage.removeItem(LOCAL_STORAGE_KEY); localStorage.removeItem(AUTH_STORAGE_KEY); window.location.reload(); }, className: "ml-2 mt-1 sm:mt-0 sm:ml-auto px-2 py-0.5 bg-red-500 hover:bg-red-600 text-white text-xs rounded" }, "Reset Data & Reload"))); }
+
+            if (tasks.length > 0) { mainReturnChildren.push(React.createElement(OverallProgress, { key: "overall-progress", tasks: tasks })); }
+            mainReturnChildren.push(
+                React.createElement(React.Fragment, { key: "main-content" },
+                    React.createElement("div", { className: "mb-4 p-4 bg-white shadow-md rounded-lg flex flex-col sm:flex-row sm:items-center gap-4" }, 
+                        React.createElement("input", { type: "text", placeholder: "Search...", className: "flex-grow p-3 bg-slate-50 text-slate-700 rounded-md border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-colors", value: searchTerm, onChange: (e) => setSearchTerm(e.target.value) }), 
+                        React.createElement("div", { className: "flex flex-wrap items-center justify-center sm:justify-end gap-2" }, 
+                            (loggedInUserType === 'admin' && currentView === 'admin') && React.createElement("label", { htmlFor: "csvUpload", className: "file-input-button bg-indigo-500 hover:bg-indigo-600 text-white" }, React.createElement(UploadCloud, { size: 18, className: "mr-2" }), React.createElement("span", {className: "hidden sm:inline"}, "Import CSV")), 
+                            (loggedInUserType === 'admin' && currentView === 'admin') && React.createElement("input", { type: "file", id: "csvUpload", accept: ".csv", className: "hidden", onChange: handleFileUpload }), 
+                            React.createElement("button", { onClick: handleExportCSV, className: "file-input-button bg-emerald-500 hover:bg-emerald-600 text-white" }, React.createElement(DownloadCloud, { size: 18, className: "mr-2" }), React.createElement("span", {className: "hidden sm:inline"}, "Export CSV")), 
+                            React.createElement("button", { onClick: handleExportPDF, className: "file-input-button bg-rose-500 hover:bg-rose-600 text-white" }, React.createElement(FileText, { size: 18, className: "mr-2" }), React.createElement("span", {className: "hidden sm:inline"}, "Export PDF")), 
+                            currentView === 'admin' && React.createElement("button", { onClick: handleExportGanttImage, className: "file-input-button bg-amber-500 hover:bg-amber-600 text-white" }, React.createElement(Image, { size: 18, className: "mr-2" }), React.createElement("span", {className: "hidden sm:inline"}, "Gantt"))
+                        )
+                    ),
+                    filteredAndSortedTasks.length > 0 ?
+                        React.createElement(TaskTable, { tasks: filteredAndSortedTasks, viewType: currentView, loggedInUserType: loggedInUserType, onUpdateTask: handleUpdateTask, onEditTask: openEditModal, onAIUpdate: openAIModal, onShowNotes: openNotesModal, onClientComm: openClientCommModal, onToggleClientDeliverable: (task, isDeliverable) => handleUpdateTask(task.id, { ...task, isClientDeliverable: isDeliverable }), onToggleExpansion: toggleTaskExpansion, sortBy: sortBy, onSort: handleSort }) :
+                        React.createElement("div", { className: "text-center py-10 bg-white shadow rounded-lg" }, React.createElement(MessageSquareIcon, { className: "mx-auto h-12 w-12 text-slate-400" }), React.createElement("h3", { className: "mt-2 text-lg font-medium text-slate-700" }, "No Tasks Found"), React.createElement("p", { className: "mt-1 text-sm text-slate-500 px-4" }, currentView === 'client' && !searchTerm ? "No tasks marked as client deliverables." : searchTerm ? "No tasks match your search criteria." : "No tasks available. Try importing a CSV if you are an Admin.")),
+                    ((currentView === 'admin' && loggedInUserType === 'admin') || currentView === 'client') && filteredAndSortedTasks.length > 0 && React.createElement(GanttChart, { tasks: filteredAndSortedTasks })
+                )
+            );
+            if (showEditModal && selectedTask && loggedInUserType === 'admin') { mainReturnChildren.push(React.createElement(EditTaskModal, { key: "edit-modal", task: selectedTask, onClose: () => setShowEditModal(false), onSave: (updatedTask) => { handleUpdateTask(selectedTask.id, updatedTask); setShowEditModal(false); } })); }
+            if (showAIModal && selectedTask && loggedInUserType === 'admin') {
+                mainReturnChildren.push(React.createElement(AIUpdateModal, {
+                    key: "ai-modal",
+                    task: selectedTask,
+                    onClose: () => setShowAIModal(false),
+                    onApplySuggestion: (taskId, suggestion) => {
+                      const t = tasks.find(t => t.id === taskId);
+                      if (!t) {
+                        console.error("Task not found for AI update:", taskId);
+                        setAppError("Could not apply AI suggestion: Task not found.");
+                        return;
+                      }
+                      const aiNote = {
+                        text: `AI Suggestion: Progress ${suggestion.progress ?? 'N/A'}%, Status ${suggestion.status ?? 'N/A'}. Note: ${suggestion.notes ?? 'N/A'}`,
+                        timestamp: new Date().toISOString(),
+                        source: 'ai'
+                      };
+                      const updatePayload = { notes: [...(t.notes || []), aiNote] };
+                      if (suggestion.progress != null) updatePayload.progress = suggestion.progress;
+                      if (suggestion.status) updatePayload.status = suggestion.status;
+                      handleUpdateTask(taskId, updatePayload);
+                      setShowAIModal(false);
+                      setSuccessMessage("AI suggestions applied and note added.");
+                    },
+                    setAppError: setAppError
+                }));
+            }            if (showNotesModal && selectedTask) {
+                mainReturnChildren.push(React.createElement(NotesModal, {
+                        key: "notes-modal",
+                        task: selectedTask,
+                        loggedInUserType: loggedInUserType,
+                        onClose: () => setShowNotesModal(false),
+                        onAddNote: (taskId, noteText) => {
+                                const t = tasks.find(t => t.id === taskId);
+                                if (!t) {
+                                    console.error("Task not found for adding note:", taskId);
+                                    setAppError("Could not add note: Task not found.");
+                                    return;
+                                }
+                                const newNote = {
+                                    text: noteText,
+                                    timestamp: new Date().toISOString(),
+                                    source: 'manual'
+                                };
+                                handleUpdateTask(taskId, {
+                                    notes: [...(t.notes || []), newNote]
+                                });
+                                setSuccessMessage("Note added successfully.");
+                            }
+                        }));
+                }            
+            if (showClientCommModal && selectedTask) { mainReturnChildren.push(React.createElement(ClientCommunicationModal, { key: "client-comm-modal", task: selectedTask, loggedInUserType: loggedInUserType, onClose: () => setShowClientCommModal(false), onAdminAddComment: handleAddClientComment, onClientRespond: handleClientCommentResponse })); }
+            
+            if(loggedInUserType) {
+                 mainReturnChildren.push(React.createElement(Chatbot, { key: "chatbot", projectTasks: tasks }));
+            }
+
+            return React.createElement("div", { className: "min-h-screen bg-slate-100 p-2 sm:p-4 md:p-8 font-sans" }, ...mainReturnChildren);
+        };
+
+        // --- LoginForm Component ---
+        const LoginForm = ({ onAdminLogin, onClientLogin, loginError, setLoginError, loginAttemptType, setLoginAttemptType, onLogoUpload, currentLogo }) => {
+            const { useState } = React; const [username, setUsername] = useState(''); const [password, setPassword] = useState(''); const [projectNumber, setProjectNumber] = useState('');
+            const handleSubmit = (e) => { e.preventDefault(); if (setLoginError) setLoginError(''); if (loginAttemptType === 'admin') { onAdminLogin(username, password); } else { onClientLogin(projectNumber); } };
+            return (
+                React.createElement("div", { className: "min-h-screen flex flex-col items-center justify-between bg-slate-100 p-4" },
+                    React.createElement("div", { className: "flex flex-col sm:flex-row items-center mb-8 space-y-4 sm:space-y-0 sm:space-x-3 text-center" }, 
+                        currentLogo ? React.createElement("img", { src: currentLogo, alt: "App Logo", className: "h-12 w-auto" }) : React.createElement(AppIconPlaceholder, { className: "text-sky-600 h-12 w-12 text-2xl bg-white shadow-md" }),
+                        React.createElement("div", null, 
+                           React.createElement("h1", { className: "text-2xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-600 to-blue-700" }, APP_TITLE),
+                           React.createElement("h2", { className: "text-sm sm:text-base text-slate-500" }, APP_SUBTITLE)
+                        ),
+                        React.createElement("label", { htmlFor: "loginLogoUpload", className: "text-xs px-2 py-1 bg-slate-200 text-slate-600 hover:bg-slate-300 rounded-md cursor-pointer flex items-center" }, React.createElement(UploadIcon, { size: 14, className: "mr-1" }), "Upload Logo"), React.createElement("input", { type: "file", id: "loginLogoUpload", accept: "image/*", className: "hidden", onChange: onLogoUpload })
+                    ),
+                    React.createElement("div", { className: "w-full max-w-sm sm:max-w-md bg-white p-6 sm:p-8 rounded-xl shadow-2xl" },
+                        React.createElement("div", { className: "mb-6 flex border-b border-slate-300" }, React.createElement("button", { onClick: () => setLoginAttemptType('admin'), className: `flex-1 py-3 text-center font-semibold text-sm sm:text-base ${loginAttemptType === 'admin' ? 'text-sky-600 border-b-2 border-sky-600' : 'text-slate-500 hover:text-slate-700'}` }, "Admin Login"), React.createElement("button", { onClick: () => setLoginAttemptType('client'), className: `flex-1 py-3 text-center font-semibold text-sm sm:text-base ${loginAttemptType === 'client' ? 'text-teal-600 border-b-2 border-teal-600' : 'text-slate-500 hover:text-slate-700'}` }, "Client Login")),
+                        React.createElement("form", { onSubmit: handleSubmit, className: "space-y-6" },
+                            loginAttemptType === 'admin' && React.createElement(React.Fragment, null, React.createElement("div", null, React.createElement("label", { htmlFor: "username", className: "block text-sm font-medium text-slate-700 mb-1" }, "Username"), React.createElement("div", { className: "relative" }, React.createElement("div", { className: "absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" }, React.createElement(UserIcon, { size: 16, className: "text-slate-400" })), React.createElement("input", { type: "text", id: "username", value: username, onChange: (e) => setUsername(e.target.value), required: true, className: "w-full pl-10 p-3 modal-input rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500", placeholder: "admin" }))), React.createElement("div", null, React.createElement("label", { htmlFor: "password", className: "block text-sm font-medium text-slate-700 mb-1" }, "Password"), React.createElement("div", { className: "relative" }, React.createElement("div", { className: "absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" }, React.createElement(LockIcon, { size: 16, className: "text-slate-400" })), React.createElement("input", { type: "password", id: "password", value: password, onChange: (e) => setPassword(e.target.value), required: true, className: "w-full pl-10 p-3 modal-input rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500", placeholder: "password123" })))),
+                            loginAttemptType === 'client' && React.createElement("div", null, React.createElement("label", { htmlFor: "projectNumber", className: "block text-sm font-medium text-slate-700 mb-1" }, "Project Number"), React.createElement("div", { className: "relative" }, React.createElement("div", { className: "absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" }, React.createElement(ProjectIcon, { size: 16, className: "text-slate-400" })), React.createElement("input", { type: "text", id: "projectNumber", value: projectNumber, onChange: (e) => setProjectNumber(e.target.value), required: true, className: "w-full pl-10 p-3 modal-input rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500", placeholder: "PROJ789" }))),
+                            loginError && React.createElement("p", { className: "text-sm text-red-600 text-center" }, loginError),
+                            React.createElement("button", { type: "submit", className: `w-full py-3 px-4 font-semibold text-white rounded-lg transition-colors duration-300 ${loginAttemptType === 'admin' ? 'bg-sky-600 hover:bg-sky-700 focus:ring-sky-500' : 'bg-teal-600 hover:bg-teal-700 focus:ring-teal-500'} focus:outline-none focus:ring-2  focus:ring-offset-2` }, "Login")
+                        )
+                    ),
+                    React.createElement("p", { className: "mt-8 text-xs text-slate-500 text-center px-4" }, "Note: Admin (admin/password123), Client Project (PROJ789). This login is for demonstration only.")
+                )
+            );
+        };
+
+        // --- TaskTable Component ---
+        const TaskTable = ({ tasks, viewType, loggedInUserType, onUpdateTask, onEditTask, onAIUpdate, onShowNotes, onClientComm, onToggleClientDeliverable, onToggleExpansion, sortBy, onSort }) => {
+            const SortIcon = ({ field }) => { if (sortBy.field !== field) return React.createElement(ChevronDown, { className: "inline ml-1 h-4 w-4 opacity-30 text-slate-400" }); return sortBy.order === 'asc' ? React.createElement(ChevronUp, { className: "inline ml-1 h-4 w-4 text-sky-600" }) : React.createElement(ChevronDown, { className: "inline ml-1 h-4 w-4 text-sky-600" }); };
+            const commonHeaders = [{ key: 'wbs', label: 'WBS' }, { key: 'taskName', label: 'Task Name / Deliverable' }, { key: 'plannedStartDate', label: 'Planned Start' }, { key: 'plannedEndDate', label: 'Planned End' }, { key: 'status', label: 'Status' }, { key: 'progress', label: 'Progress' },];
+            let headers = (loggedInUserType === 'admin' && viewType === 'admin') ? [...commonHeaders, { key: 'actualStartDate', label: 'Actual Start' }, { key: 'actualEndDate', label: 'Actual End' }, { key: 'isCritical', label: 'Critical?' }, { key: 'delayWeatherDays', label: 'Weather Delay' }, { key: 'delayContractorDays', label: 'Ctr. Delay' }, { key: 'delayClientDays', label: 'Client Delay' }, { key: 'isClientDeliverable', label: 'Client View?' }, { key: 'clientComm', label: 'Client Comm.' }, { key: 'actions', label: 'Actions' }] : [...commonHeaders, { key: 'clientComm', label: 'Comments' }];
+            const nonSortableHeaderKeys = ['actions', 'isClientDeliverable', 'isCritical', 'clientComm', 'delayWeatherDays', 'delayContractorDays', 'delayClientDays'];
+            
+            return (React.createElement("div", { className: "overflow-x-auto bg-white shadow-xl rounded-xl" }, 
+                React.createElement("table", { className: "min-w-full divide-y divide-slate-200" }, 
+                    React.createElement("thead", { className: "bg-slate-50" }, 
+                        React.createElement("tr", null, headers.map(header => (
+                            React.createElement("th", { 
+                                key: header.key, 
+                                scope: "col", 
+                                className: "px-4 py-3.5 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-slate-100", 
+                                onClick: () => !nonSortableHeaderKeys.includes(header.key) && onSort(header.key) 
+                            }, header.label, !nonSortableHeaderKeys.includes(header.key) && React.createElement(SortIcon, { field: header.key }))
+                        )))
+                    ), 
+                    React.createElement("tbody", { className: "divide-y divide-slate-200 bg-white" }, tasks.map(task => (
+                        React.createElement(TaskRow, { key: task.id, task: task, viewType: viewType, loggedInUserType: loggedInUserType, onUpdateTask: onUpdateTask, onEditTask: onEditTask, onAIUpdate: onAIUpdate, onShowNotes: onShowNotes, onClientComm: onClientComm, onToggleClientDeliverable: onToggleClientDeliverable, onToggleExpansion: onToggleExpansion })
+                    )))
+                )
+            ));
+        };
+
+        // --- TaskRow Component ---
+        const TaskRow = ({ task, viewType, loggedInUserType, onUpdateTask, onEditTask, onAIUpdate, onShowNotes, onClientComm, onToggleClientDeliverable, onToggleExpansion }) => {
+            const renderStatusPill = (status) => { const baseClasses = "px-2 py-1 text-xs font-semibold rounded-full"; const colorClasses = { 'Not Started': 'bg-slate-200 text-slate-700', 'In Progress': 'bg-blue-100 text-blue-700', 'Completed': 'bg-green-100 text-green-700', 'Delayed': 'bg-red-100 text-red-700', 'On Hold': 'bg-yellow-100 text-yellow-700', 'Ahead of Schedule': 'bg-sky-100 text-sky-700' }; return React.createElement("span", { className: `${baseClasses} ${colorClasses[status] || 'bg-slate-200 text-slate-700'}` }, status || 'Not Started'); };
+            const handleCriticalToggle = () => { if (loggedInUserType === 'admin') { onUpdateTask(task.id, { isCritical: !task.isCritical }); } };
+            const latestClientComment = task.clientComments && task.clientComments.length > 0 ? task.clientComments[task.clientComments.length - 1] : null;
+            const clientCommentStatusIndicator = latestClientComment && latestClientComment.clientStatus ? `(${latestClientComment.clientStatus.substring(0, 5)}..)` : (latestClientComment ? '(Pending)' : '');
+            let actionButtons = [];
+            if (loggedInUserType === 'admin' && viewType === 'admin') {
+                actionButtons = [
+                    React.createElement("button", { key: "edit", onClick: () => onEditTask(task), className: "text-yellow-500 hover:text-yellow-600", title: "Edit Task" }, React.createElement(Edit3, { size: 18 })),
+                    React.createElement("button", { key: "ai", onClick: () => onAIUpdate(task), className: "text-purple-500 hover:text-purple-600", title: "AI Update & Risk Assessment" }, React.createElement(Zap, { size: 18 })),
+                    React.createElement("button", { key: "notes", onClick: () => onShowNotes(task), className: "text-green-500 hover:text-green-600", title: "View/Add Notes" }, React.createElement(MessageSquareIcon, { size: 18 }))
+                ];
+            }
+            return (
+                React.createElement(React.Fragment, null,
+                    React.createElement("tr", { className: `hover:bg-slate-50 transition-colors duration-150 ${task.isExpanded ? 'bg-slate-100' : ''} ${task.isCritical && viewType === 'admin' ? 'ring-1 ring-red-400' : ''}` },
+                        React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 whitespace-nowrap" }, task.wbs),
+                        React.createElement("td", { className: "px-4 py-3 text-sm font-medium text-slate-800" }, 
+                            task.isCritical && viewType === 'admin' && React.createElement(AlertTriangle, { size: 14, className: "inline mr-1 text-red-500" }), 
+                            task.taskName, 
+                            ((viewType === 'admin' && loggedInUserType === 'admin') || viewType === 'client') && 
+                                (React.createElement("button", { onClick: () => onToggleExpansion(task.id), className: "ml-2 text-xs text-sky-600 hover:text-sky-700" }, 
+                                    task.isExpanded ? React.createElement(ChevronUp, { size: 16, className: "inline" }) : React.createElement(ChevronDown, { size: 16, className: "inline" }), " Details"
+                                ))
+                        ),
+                        React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 whitespace-nowrap" }, formatDateForDisplay(task.plannedStartDate)),
+                        React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 whitespace-nowrap" }, formatDateForDisplay(task.plannedEndDate)),
+                        React.createElement("td", { className: "px-4 py-3 text-sm whitespace-nowrap" }, renderStatusPill(task.status)),
+                        React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 whitespace-nowrap" }, React.createElement("div", { className: "w-full bg-slate-200 rounded-full h-2.5" }, React.createElement("div", { className: "bg-blue-500 h-2.5 rounded-full", style: { width: `${task.progress || 0}%` } })), React.createElement("span", { className: "text-xs ml-1" }, task.progress || 0, "%")),
+                        loggedInUserType === 'admin' && viewType === 'admin' && (React.createElement(React.Fragment, null,
+                            React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 whitespace-nowrap" }, formatDateForDisplay(task.actualStartDate)),
+                            React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 whitespace-nowrap" }, formatDateForDisplay(task.actualEndDate)),
+                            React.createElement("td", { className: "px-4 py-3 text-sm text-center cursor-pointer hover:bg-slate-100", onClick: handleCriticalToggle, title: "Toggle Critical Status" }, task.isCritical ? React.createElement(CheckCircle, { size: 18, className: "text-red-500" }) : React.createElement("span", { className: "text-slate-400" }, "-")),
+                            React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 text-center" }, task.delayWeatherDays || 0),
+                            React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 text-center" }, task.delayContractorDays || 0),
+                            React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 text-center" }, task.delayClientDays || 0),
+                            React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600" }, React.createElement("input", { type: "checkbox", className: "h-5 w-5 rounded text-sky-600 border-slate-300 focus:ring-sky-500 cursor-pointer", checked: !!task.isClientDeliverable, onChange: (e) => onToggleClientDeliverable(task, e.target.checked) })),
+                            React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600" }, React.createElement("button", { onClick: () => onClientComm(task), className: "text-blue-500 hover:text-blue-600 text-xs p-1 rounded hover:bg-blue-50 flex items-center" }, React.createElement(MessageSquareIcon, { size: 16, className: "mr-1" }), "Comm ", React.createElement("span", { className: "text-xs text-gray-500 ml-1" }, clientCommentStatusIndicator))),
+                            React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 whitespace-nowrap space-x-2" }, ...actionButtons)
+                        )),
+                        loggedInUserType === 'client' && viewType === 'client' && (React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600" }, React.createElement("button", { onClick: () => onClientComm(task), className: "text-blue-500 hover:text-blue-600 text-xs p-1 rounded hover:bg-blue-50 flex items-center" }, React.createElement(EyeIcon, { size: 16, className: "mr-1" }), "View ", React.createElement("span", { className: "text-xs text-gray-500 ml-1" }, clientCommentStatusIndicator))))
+                    ),
+                    viewType === 'admin' && loggedInUserType === 'admin' && task.isExpanded &&
+                    (React.createElement("tr", { className: `bg-slate-100 ${task.isCritical ? 'ring-1 ring-red-400 ring-inset' : ''}` },
+                        React.createElement("td", { colSpan: 15, className: "p-4" },
+                            React.createElement("div", { className: "text-sm text-slate-600 grid grid-cols-1 md:grid-cols-3 gap-4" },
+                                React.createElement("div", null, React.createElement("h4", { className: "font-semibold text-slate-800 mb-1" }, "Notes:"), task.notes && task.notes.length > 0 ? (React.createElement("ul", { className: "list-disc list-inside pl-2 space-y-1 max-h-32 overflow-y-auto" }, task.notes.slice().reverse().map((note, index) => (React.createElement("li", { key: index, className: "text-xs" }, React.createElement("span", { className: "font-medium" }, new Date(note.timestamp).toLocaleString(), ": "), note.text, " (", note.source, ")"))))) : React.createElement("p", { className: "text-xs italic" }, "No notes for this task.")),
+                                React.createElement("div", null, React.createElement("h4", { className: "font-semibold text-slate-800 mb-1" }, "Predecessors:"), React.createElement("p", { className: "text-xs" }, task.predecessorString || React.createElement("em", null, "None"))),
+                                React.createElement("div", null, React.createElement("h4", { className: "font-semibold text-slate-800 mb-1" }, "Latest Client Comment Status:"), latestClientComment ? React.createElement("p", { className: "text-xs" }, latestClientComment.clientStatus ? `${latestClientComment.clientStatus} (on ${formatDateForDisplay(latestClientComment.clientResponseTimestamp)})` : "Pending Client Response") : React.createElement("em", { className: "text-xs" }, "No client comments yet."))
+                            )
+                        )
+                    )),
+                    viewType === 'client' && task.isExpanded &&
+                    (React.createElement("tr", { className: "bg-slate-100" },
+                        React.createElement("td", { colSpan: 7, className: "p-4" },
+                            React.createElement("div", { className: "text-sm text-slate-600" },
+                                React.createElement("div", null, 
+                                    React.createElement("h4", { className: "font-semibold text-slate-800 mb-1" }, "Delay Details"),
+                                    React.createElement("ul", { className: "list-none space-y-1 text-xs" },
+                                        React.createElement("li", null, "Weather Delay: ", React.createElement("strong", {className:"font-bold"}, task.delayWeatherDays || 0, " days")),
+                                        React.createElement("li", null, "Contractor Delay: ", React.createElement("strong", {className:"font-bold"}, task.delayContractorDays || 0, " days")),
+                                        React.createElement("li", null, "Client Delay: ", React.createElement("strong", {className:"font-bold"}, task.delayClientDays || 0, " days"))
+                                    )
+                                )
+                            )
+                        )
+                    ))
+                )
+            );
+        };
+
+
+        const EditTaskModal = ({ task, onClose, onSave }) => {
+            const { useState, useEffect } = React;
+            const [formData, setFormData] = useState({ ...task });
+
+            useEffect(() => {
+                setFormData({ ...task });
+            }, [task]);
+
+            const handleChange = (e) => { const { name, value, type, checked } = e.target; setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : (type === 'number' ? parseInt(value, 10) || 0 : value) })); };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                const finalData = { ...formData, progress: Math.max(0, Math.min(100, Number(formData.progress) || 0)), actualStartDate: formData.actualStartDate || null, actualEndDate: formData.actualEndDate || null, delayWeatherDays: Number(formData.delayWeatherDays) || 0, delayContractorDays: Number(formData.delayContractorDays) || 0, delayClientDays: Number(formData.delayClientDays) || 0 };
+                onSave(finalData);
+            };
+            return (React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm" }, 
+                React.createElement("div", { className: "modal-content p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto" }, 
+                React.createElement("h2", { className: "text-xl sm:text-2xl font-semibold mb-6 text-sky-600" }, "Edit Task: ", React.createElement("span", {className: "font-bold"}, task.taskName)), React.createElement("form", { onSubmit: handleSubmit, className: "space-y-4" },
+                React.createElement("div", null, React.createElement("label", { htmlFor: "progress", className: "modal-label block text-sm font-medium mb-1" }, "Progress (%)"), React.createElement("input", { type: "number", name: "progress", id: "progress", value: formData.progress || 0, onChange: handleChange, min: "0", max: "100", className: "w-full p-2 modal-input rounded-md" })),
+                React.createElement("div", null, React.createElement("label", { htmlFor: "status", className: "modal-label block text-sm font-medium mb-1" }, "Status"), React.createElement("select", { name: "status", id: "status", value: formData.status, onChange: handleChange, className: "w-full p-2 modal-input rounded-md" }, TASK_STATUSES.map(s => React.createElement("option", { key: s, value: s }, s)))),
+                React.createElement("div", null, React.createElement("label", { htmlFor: "actualStartDate", className: "modal-label block text-sm font-medium mb-1" }, "Actual Start Date"), React.createElement("input", { type: "date", name: "actualStartDate", id: "actualStartDate", value: formatDateForInput(formData.actualStartDate), onChange: handleChange, className: "w-full p-2 modal-input rounded-md" })),
+                React.createElement("div", null, React.createElement("label", { htmlFor: "actualEndDate", className: "modal-label block text-sm font-medium mb-1" }, "Actual End Date"), React.createElement("input", { type: "date", name: "actualEndDate", id: "actualEndDate", value: formatDateForInput(formData.actualEndDate), onChange: handleChange, className: "w-full p-2 modal-input rounded-md" })),
+                React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-4" },
+                    React.createElement("div", null, React.createElement("label", { htmlFor: "delayWeatherDays", className: "modal-label block text-sm font-medium mb-1" }, "Weather Delay"), React.createElement("input", { type: "number", name: "delayWeatherDays", id: "delayWeatherDays", value: formData.delayWeatherDays || 0, onChange: handleChange, min: "0", className: "w-full p-2 modal-input rounded-md" })),
+                    React.createElement("div", null, React.createElement("label", { htmlFor: "delayContractorDays", className: "modal-label block text-sm font-medium mb-1" }, "Contractor Delay"), React.createElement("input", { type: "number", name: "delayContractorDays", id: "delayContractorDays", value: formData.delayContractorDays || 0, onChange: handleChange, min: "0", className: "w-full p-2 modal-input rounded-md" })),
+                    React.createElement("div", null, React.createElement("label", { htmlFor: "delayClientDays", className: "modal-label block text-sm font-medium mb-1" }, "Client Delay"), React.createElement("input", { type: "number", name: "delayClientDays", id: "delayClientDays", value: formData.delayClientDays || 0, onChange: handleChange, min: "0", className: "w-full p-2 modal-input rounded-md" }))
+                ),
+                React.createElement("div", null, React.createElement("label", { htmlFor: "predecessorString", className: "modal-label block text-sm font-medium mb-1" }, "Predecessors"), React.createElement("input", { type: "text", name: "predecessorString", id: "predecessorString", value: formData.predecessorString || '', onChange: handleChange, className: "w-full p-2 modal-input rounded-md", placeholder: "e.g., 17, 3FS+4d" })),
+                React.createElement("div", { className: "flex items-center space-x-4" }, React.createElement("label", { htmlFor: "isCritical", className: "flex items-center text-sm font-medium modal-label" }, React.createElement("input", { type: "checkbox", name: "isCritical", id: "isCritical", checked: !!formData.isCritical, onChange: handleChange, className: "h-4 w-4 text-red-600 border-slate-300 rounded focus:ring-red-500 mr-2" }), "Mark as Critical"), React.createElement("label", { htmlFor: "isClientDeliverable", className: "flex items-center text-sm font-medium modal-label" }, React.createElement("input", { type: "checkbox", name: "isClientDeliverable", id: "isClientDeliverable", checked: !!formData.isClientDeliverable, onChange: handleChange, className: "h-4 w-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500 mr-2" }), "Client Deliverable")),
+                React.createElement("div", { className: "flex justify-end space-x-3 pt-4" }, React.createElement("button", { type: "button", onClick: onClose, className: "px-4 py-2 rounded-md bg-slate-200 hover:bg-slate-300 text-slate-700 transition-colors" }, "Cancel"), React.createElement("button", { type: "submit", className: "px-4 py-2 rounded-md bg-sky-600 hover:bg-sky-700 text-white font-semibold transition-colors flex items-center" }, React.createElement(Save, { size: 18, className: "mr-2" }), " Save Changes"))))));
+        };
+
+        const AIUpdateModal = ({ task, onClose, onApplySuggestion, setAppError }) => {
+            const { useState } = React;
+            const [suggestedProgress, setSuggestedProgress] = useState(task.progress || 0);
+            const [suggestedStatus, setSuggestedStatus] = useState(task.status || "Not Started");
+            const [suggestedNotes, setSuggestedNotes] = useState("");
+            const [isGeneratingRiskAssessment, setIsGeneratingRiskAssessment] = useState(false);
+            const [generationError, setGenerationError] = useState(null);
+
+            const handleGenerateRiskAssessment = async () => {
+                setIsGeneratingRiskAssessment(true);
+                setGenerationError(null);
+                setAppError(null);
+
+                const prompt = `Project Task: "${task.taskName}" (WBS: ${task.wbs})
+Current Status: ${task.status}
+Current Progress: ${task.progress || 0}%
+Delays:
+- Weather Delay: ${task.delayWeatherDays || 0} days
+- Contractor Delay: ${task.delayContractorDays || 0} days
+- Client Delay: ${task.delayClientDays || 0} days
+
+Based on the current information for this project task, please identify potential risks associated with its status and any delays. 
+For each significant risk, suggest a concise mitigation strategy. 
+Present the output clearly, for example:
+- Risk: [Description of Risk 1]
+  - Mitigation: [Strategy for Risk 1]
+- Risk: [Description of Risk 2]
+  - Mitigation: [Strategy for Risk 2]
+Keep the entire response under 150 words.`;
+
+                try {
+                    let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                    const payload = { contents: chatHistory };
+                    const apiKey = GEMINI_API_KEY;
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errorBody = await response.json();
+                        console.error("Gemini API Error:", errorBody);
+                        throw new Error(`API request failed with status ${response.status}: ${errorBody?.error?.message || 'Unknown error'}`);
+                    }
+
+                    const result = await response.json();
+
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const text = result.candidates[0].content.parts[0].text;
+                        setSuggestedNotes(prevNotes => `${prevNotes ? prevNotes + '\n\n' : ''}✨ AI Risk Assessment & Mitigation:\n${text}`);
+                    } else {
+                        console.error("Unexpected API response structure:", result);
+                        throw new Error("Failed to extract text from API response. The response structure was not as expected.");
+                    }
+                } catch (error) {
+                    console.error("Error calling Gemini API:", error);
+                    setGenerationError(`Failed to generate risk assessment: ${error.message}. Check console for details.`);
+                    setAppError(`Gemini API Error: ${error.message}`);
+                } finally {
+                    setIsGeneratingRiskAssessment(false);
+                }
+            };
+
+
+            return (
+                React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm" },
+                    React.createElement("div", { className: "modal-content p-6 rounded-xl shadow-xl w-full max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto" },
+                        React.createElement("h2", { className: "text-xl sm:text-2xl font-semibold mb-6 text-purple-600 flex items-center" }, React.createElement(Zap, { size: 22, className: "mr-2" }), "AI Update for \"", task.taskName, "\""),
+                        React.createElement("div", { className: "space-y-4" },
+                            React.createElement("div", null,
+                                React.createElement("label", { className: "modal-label block text-sm font-medium mb-1" }, "Progress (%)"),
+                                React.createElement("input", { type: "number", min: "0", max: "100", value: suggestedProgress, onChange: (e) => setSuggestedProgress(parseInt(e.target.value, 10) || 0), className: "w-full p-2 modal-input rounded-md" })
+                            ),
+                            React.createElement("div", null,
+                                React.createElement("label", { className: "modal-label block text-sm font-medium mb-1" }, "Status"),
+                                React.createElement("select", { value: suggestedStatus, onChange: (e) => setSuggestedStatus(e.target.value), className: "w-full p-2 modal-input rounded-md" },
+                                    TASK_STATUSES.map((s) => (React.createElement("option", { key: s, value: s }, s)))
+                                )
+                            ),
+                            React.createElement("div", null,
+                                React.createElement("label", { className: "modal-label block text-sm font-medium mb-1" }, "Notes (Manual or AI-Generated)"),
+                                React.createElement("textarea", { rows: "4", value: suggestedNotes, onChange: (e) => setSuggestedNotes(e.target.value), className: "w-full p-2 modal-input rounded-md" })
+                            ),
+                            generationError && React.createElement("p", { className: "text-xs text-red-600" }, generationError),
+                            React.createElement("button", {
+                                type: "button",
+                                onClick: handleGenerateRiskAssessment,
+                                disabled: isGeneratingRiskAssessment,
+                                className: "w-full mt-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-md flex items-center justify-center transition-colors disabled:opacity-50"
+                            },
+                                isGeneratingRiskAssessment ? React.createElement("div", { className: "ai-spinner" }) : React.createElement(LightbulbIcon, { size: 18, className: "mr-2" }),
+                                isGeneratingRiskAssessment ? "Generating Insights..." : "✨ Generate Risk Assessment & Mitigation Ideas"
+                            )
+                        ),
+                        React.createElement("div", { className: "flex justify-end gap-3 pt-6" },
+                            React.createElement("button", { type: "button", onClick: onClose, className: "px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-md text-slate-700" }, "Cancel"),
+                            React.createElement("button", { type: "button", onClick: () => { onApplySuggestion(task.id, { progress: suggestedProgress, status: suggestedStatus, notes: suggestedNotes }); onClose(); }, className: "px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-md text-white font-semibold flex items-center" }, React.createElement(CheckCircle, { size: 18, className: "mr-2" }), "Apply Suggestions")
+                        )
+                    )
+                )
+            );
+        };
+
+        const NotesModal = ({ task, loggedInUserType, onClose, onAddNote }) => {
+            const { useState } = React; const [noteText, setNoteText] = useState("");
+            return (
+                React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm" },
+                    React.createElement("div", { className: "modal-content p-6 rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" },
+                        React.createElement("h2", { className: "text-xl font-semibold mb-4 text-green-600 flex items-center" }, React.createElement(MessageSquareIcon, { size: 20, className: "mr-2" }), loggedInUserType === 'admin' ? `Notes for "${task.taskName}"` : `View Notes for "${task.taskName}"`),
+                        React.createElement("div", { className: "space-y-4" },
+                            React.createElement("div", null,
+                                React.createElement("h3", { className: "font-medium text-slate-800 mb-2 text-sm" }, "Existing Notes"),
+                                task.notes && task.notes.length > 0 ? (
+                                    React.createElement("ul", { className: "list-none space-y-2 max-h-48 overflow-y-auto pr-2" },
+                                        task.notes.slice().reverse().map((n, idx) => (
+                                            React.createElement("li", { key: idx, className: "mb-1 p-2.5 bg-slate-50 rounded-md border border-slate-200 text-xs" },
+                                                React.createElement("span", { className: "block font-medium text-slate-700" }, new Date(n.timestamp).toLocaleString(), " (", n.source, ")"),
+                                                React.createElement("p", { className: "text-slate-600 mt-0.5 whitespace-pre-wrap" }, n.text)
+                                            )
+                                        ))
+                                    )
+                                ) : (React.createElement("p", { className: "text-sm italic text-slate-500" }, "No notes yet."))
+                            ),
+                            loggedInUserType === 'admin' && (
+                                React.createElement("div", null,
+                                    React.createElement("label", { htmlFor: "noteText", className: "modal-label block text-sm font-medium mb-1" }, "New Note"),
+                                    React.createElement("textarea", { id: "noteText", rows: "3", className: "w-full p-2 modal-input rounded-md", value: noteText, onChange: (e) => setNoteText(e.target.value) })
+                                )
+                            )
+                        ),
+                        React.createElement("div", { className: "flex justify-end gap-3 pt-6" },
+                            React.createElement("button", { type: "button", onClick: onClose, className: "px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-md text-slate-700" }, "Close"),
+                            loggedInUserType === 'admin' && (React.createElement("button", { type: "button", onClick: () => { if (noteText.trim()) { onAddNote(task.id, noteText.trim()); onClose(); } }, className: "px-4 py-2 bg-green-600 hover:bg-green-700 rounded-md text-white font-semibold flex items-center" }, React.createElement(PlusCircle, { size: 18, className: "mr-2" }), "Add Note"))
+                        )
+                    )
+                )
+            );
+        };
+        const ClientCommunicationModal = ({ task, loggedInUserType, onClose, onAdminAddComment, onClientRespond }) => {
+            const { useState } = React; const [adminCommentText, setAdminCommentText] = useState(""); const [selectedStatus, setSelectedStatus] = useState("");
+            const latestComment = (task.clientComments && task.clientComments.length > 0) ? task.clientComments[task.clientComments.length - 1] : null;
+            return (
+                React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm" },
+                    React.createElement("div", { className: "modal-content p-6 rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" },
+                        React.createElement("h2", { className: "text-xl font-semibold mb-6 text-sky-600 flex items-center" }, React.createElement(MessageSquareIcon, { size: 20, className: "mr-2" }), loggedInUserType === "admin" ? `Client Communication for "${task.taskName}"` : `Client Response for "${task.taskName}"`),
+                        loggedInUserType === "admin" && (
+                            React.createElement("div", { className: "space-y-4" },
+                                React.createElement("div", null,
+                                    React.createElement("h3", { className: "font-medium text-slate-800 mb-2 text-sm" }, "Communication Log"),
+                                    task.clientComments && task.clientComments.length > 0 ? (
+                                        React.createElement("ul", { className: "list-none space-y-3 max-h-48 overflow-y-auto pr-2" },
+                                            task.clientComments.slice().reverse().map((cc) => (
+                                                React.createElement("li", { key: cc.id, className: "mb-2 p-2.5 rounded-md border text-xs " + (cc.clientStatus ? "bg-green-50 border-green-200" : "bg-sky-50 border-sky-200") },
+                                                    React.createElement("span", { className: "block font-medium text-slate-700" }, "Admin (", new Date(cc.adminTimestamp).toLocaleString(), "):"),
+                                                    React.createElement("p", { className: "text-slate-600 mt-0.5 whitespace-pre-wrap" }, cc.adminComment),
+                                                    cc.clientStatus && (React.createElement(React.Fragment, null, React.createElement("hr", { className: "my-2 border-slate-300" }), React.createElement("span", { className: "block font-medium text-slate-700" }, "Client (", new Date(cc.clientResponseTimestamp).toLocaleString(), "):"), React.createElement("p", { className: "text-slate-600 mt-0.5 whitespace-pre-wrap" }, React.createElement("strong", null, cc.clientStatus))))
+                                                )
+                                            ))
+                                        )
+                                    ) : (React.createElement("p", { className: "text-sm italic text-slate-500" }, "No comments yet."))
+                                ),
+                                React.createElement("div", null,
+                                    React.createElement("label", { htmlFor: "adminComment", className: "modal-label block text-sm font-medium mb-1" }, "New Comment to Client"),
+                                    React.createElement("textarea", { id: "adminComment", rows: "3", className: "w-full p-2 modal-input rounded-md", value: adminCommentText, onChange: (e) => setAdminCommentText(e.target.value) })
+                                ),
+                                React.createElement("div", { className: "flex justify-end gap-3 pt-4" },
+                                    React.createElement("button", { type: "button", onClick: onClose, className: "px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-md text-slate-700" }, "Cancel"),
+                                    React.createElement("button", { type: "button", onClick: () => { if (adminCommentText.trim()) { onAdminAddComment(task.id, adminCommentText.trim()); setAdminCommentText(""); onClose(); } }, className: "px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md text-white font-semibold flex items-center" }, React.createElement(SendIcon, { size: 16, className: "mr-2" }), "Submit to Client")
+                                )
+                            )
+                        ),
+                        loggedInUserType === "client" && (
+                            React.createElement("div", { className: "space-y-4" },
+                                React.createElement("div", null,
+                                    React.createElement("h3", { className: "font-medium text-slate-800 mb-1 text-sm" }, "Latest Admin Comment"),
+                                    latestComment && !latestComment.clientStatus ? (React.createElement("div", { className: "p-3 bg-sky-50 rounded-md text-sm text-slate-700 border border-sky-200" }, React.createElement("strong", null, new Date(latestComment.adminTimestamp).toLocaleString(), ":"), React.createElement("p", { className: "mt-1 whitespace-pre-wrap" }, latestComment.adminComment))) : latestComment && latestComment.clientStatus ? (React.createElement("p", { className: "text-sm italic text-slate-500 p-3 bg-slate-50 rounded-md border" }, "You have already responded to the latest comment.")) : (React.createElement("p", { className: "text-sm italic text-slate-500 p-3 bg-slate-50 rounded-md border" }, "No pending comments from Admin."))
+                                ),
+                                latestComment && !latestComment.clientStatus && (
+                                    React.createElement("div", null,
+                                        React.createElement("label", { htmlFor: "clientStatus", className: "modal-label block text-sm font-medium mb-1" }, "Your Response"),
+                                        React.createElement("select", { id: "clientStatus", className: "w-full p-2 modal-input rounded-md", value: selectedStatus, onChange: (e) => setSelectedStatus(e.target.value) }, React.createElement("option", { value: "" }, "Select a response status..."), CLIENT_COMMENT_STATUSES.map((st) => (React.createElement("option", { key: st, value: st }, st))))
+                                    )
+                                ),
+                                React.createElement("div", { className: "flex justify-end gap-3 pt-4" },
+                                    React.createElement("button", { type: "button", onClick: onClose, className: "px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-md text-slate-700" }, "Close"),
+                                    latestComment && !latestComment.clientStatus && React.createElement("button", { type: "button", onClick: () => { if (latestComment && selectedStatus) { onClientRespond(task.id, latestComment.id, selectedStatus); setSelectedStatus(""); onClose(); } }, className: "px-4 py-2 bg-green-600 hover:bg-green-700 rounded-md text-white font-semibold flex items-center", disabled: !selectedStatus }, React.createElement(SendIcon, { size: 16, className: "mr-2" }), "Send Response")
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        };
+
+        // --- Mount the App ---
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(App));
+
+    </script>
+</body>
+
+</html>
