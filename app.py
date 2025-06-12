@@ -71,7 +71,7 @@ def upload_logo():
         logo_path = os.path.join(app.static_folder, LOGO_FILE)
         file.save(logo_path)
         # **FIXED LINE**
-        return jsonify({"status": "uploaded", "path": f'/static/{LOGO_FILE}'})
+        return jsonify({"status": "uploaded", "path": f'static/{LOGO_FILE}'})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
@@ -80,7 +80,7 @@ def get_logo_path():
     logo_path = os.path.join(app.static_folder, LOGO_FILE)
     if os.path.exists(logo_path):
         # **FIXED LINE**
-        return jsonify({'path': f'/static/{LOGO_FILE}'})
+        return jsonify({'path': f'static/{LOGO_FILE}'})
     return jsonify({'path': None})
 
 @app.route('/')
