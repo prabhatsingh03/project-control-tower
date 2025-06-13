@@ -216,6 +216,11 @@
             border-color: #38bdf8;
             box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.4);
         }
+        
+        .modal-input:disabled {
+            background-color: #f1f5f9;
+            cursor: not-allowed;
+        }
 
         .modal-label {
             color: #475569;
@@ -1284,10 +1289,11 @@
                 )
             );
             if (showEditModal && selectedTask && loggedInUserType === 'admin') { mainReturnChildren.push(React.createElement(EditTaskModal, { key: "edit-modal", task: selectedTask, onClose: () => setShowEditModal(false), onSave: (updatedTask) => { handleUpdateTask(selectedTask.id, updatedTask); setShowEditModal(false); } })); }
-            if (showAIModal && selectedTask && loggedInUserType === 'admin') {
+            if (showAIModal && selectedTask) {
                 mainReturnChildren.push(React.createElement(AIUpdateModal, {
                     key: "ai-modal",
                     task: selectedTask,
+                    loggedInUserType: loggedInUserType,
                     onClose: () => setShowAIModal(false),
                     onApplySuggestion: (taskId, suggestion) => {
                       const t = tasks.find(t => t.id === taskId);
@@ -1310,7 +1316,8 @@
                     },
                     setAppError: setAppError
                 }));
-            }            if (showNotesModal && selectedTask) {
+            }
+            if (showNotesModal && selectedTask) {
                 mainReturnChildren.push(React.createElement(NotesModal, {
                         key: "notes-modal",
                         task: selectedTask,
@@ -1376,7 +1383,7 @@
         const TaskTable = ({ tasks, viewType, loggedInUserType, onUpdateTask, onEditTask, onAIUpdate, onShowNotes, onClientComm, onToggleClientDeliverable, onToggleExpansion, sortBy, onSort }) => {
             const SortIcon = ({ field }) => { if (sortBy.field !== field) return React.createElement(ChevronDown, { className: "inline ml-1 h-4 w-4 opacity-30 text-slate-400" }); return sortBy.order === 'asc' ? React.createElement(ChevronUp, { className: "inline ml-1 h-4 w-4 text-sky-600" }) : React.createElement(ChevronDown, { className: "inline ml-1 h-4 w-4 text-sky-600" }); };
             const commonHeaders = [{ key: 'wbs', label: 'WBS' }, { key: 'taskName', label: 'Task Name / Deliverable' }, { key: 'plannedStartDate', label: 'Planned Start' }, { key: 'plannedEndDate', label: 'Planned End' }, { key: 'status', label: 'Status' }, { key: 'progress', label: 'Progress' },];
-            let headers = (loggedInUserType === 'admin' && viewType === 'admin') ? [...commonHeaders, { key: 'actualStartDate', label: 'Actual Start' }, { key: 'actualEndDate', label: 'Actual End' }, { key: 'isCritical', label: 'Critical?' }, { key: 'delayWeatherDays', label: 'Weather Delay' }, { key: 'delayContractorDays', label: 'Ctr. Delay' }, { key: 'delayClientDays', label: 'Client Delay' }, { key: 'isClientDeliverable', label: 'Client View?' }, { key: 'clientComm', label: 'Client Comm.' }, { key: 'actions', label: 'Actions' }] : [...commonHeaders, { key: 'clientComm', label: 'Comments' }];
+            let headers = (loggedInUserType === 'admin' && viewType === 'admin') ? [...commonHeaders, { key: 'actualStartDate', label: 'Actual Start' }, { key: 'actualEndDate', label: 'Actual End' }, { key: 'isCritical', label: 'Critical?' }, { key: 'delayWeatherDays', label: 'Weather Delay' }, { key: 'delayContractorDays', label: 'Ctr. Delay' }, { key: 'delayClientDays', label: 'Client Delay' }, { key: 'isClientDeliverable', label: 'Client View?' }, { key: 'clientComm', label: 'Client Comm.' }, { key: 'actions', label: 'Actions' }] : [...commonHeaders, { key: 'clientComm', label: 'Actions' }];
             const nonSortableHeaderKeys = ['actions', 'isClientDeliverable', 'isCritical', 'clientComm', 'delayWeatherDays', 'delayContractorDays', 'delayClientDays'];
             
             return (React.createElement("div", { className: "overflow-x-auto bg-white shadow-xl rounded-xl" }, 
@@ -1439,7 +1446,22 @@
                             React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600" }, React.createElement("button", { onClick: () => onClientComm(task), className: "text-blue-500 hover:text-blue-600 text-xs p-1 rounded hover:bg-blue-50 flex items-center" }, React.createElement(MessageSquareIcon, { size: 16, className: "mr-1" }), "Comm ", React.createElement("span", { className: "text-xs text-gray-500 ml-1" }, clientCommentStatusIndicator))),
                             React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 whitespace-nowrap space-x-2" }, ...actionButtons)
                         )),
-                        loggedInUserType === 'client' && viewType === 'client' && (React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600" }, React.createElement("button", { onClick: () => onClientComm(task), className: "text-blue-500 hover:text-blue-600 text-xs p-1 rounded hover:bg-blue-50 flex items-center" }, React.createElement(EyeIcon, { size: 16, className: "mr-1" }), "View ", React.createElement("span", { className: "text-xs text-gray-500 ml-1" }, clientCommentStatusIndicator))))
+                        loggedInUserType === 'client' && viewType === 'client' && (
+                            React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 whitespace-nowrap" },
+                                React.createElement("div", { className: "flex items-center space-x-2" },
+                                    React.createElement("button", {
+                                        onClick: () => onClientComm(task),
+                                        className: "text-blue-500 hover:text-blue-600",
+                                        title: `View Comments ${clientCommentStatusIndicator}`
+                                    }, React.createElement(MessageSquareIcon, { size: 18 })),
+                                    React.createElement("button", {
+                                        onClick: () => onAIUpdate(task),
+                                        className: "text-purple-500 hover:text-purple-600",
+                                        title: "AI Suggestions"
+                                    }, React.createElement(Zap, { size: 18 }))
+                                )
+                            )
+                        )
                     ),
                     viewType === 'admin' && loggedInUserType === 'admin' && task.isExpanded &&
                     (React.createElement("tr", { className: `bg-slate-100 ${task.isCritical ? 'ring-1 ring-red-400 ring-inset' : ''}` },
@@ -1503,7 +1525,7 @@
                 React.createElement("div", { className: "flex justify-end space-x-3 pt-4" }, React.createElement("button", { type: "button", onClick: onClose, className: "px-4 py-2 rounded-md bg-slate-200 hover:bg-slate-300 text-slate-700 transition-colors" }, "Cancel"), React.createElement("button", { type: "submit", className: "px-4 py-2 rounded-md bg-sky-600 hover:bg-sky-700 text-white font-semibold transition-colors flex items-center" }, React.createElement(Save, { size: 18, className: "mr-2" }), " Save Changes"))))));
         };
 
-        const AIUpdateModal = ({ task, onClose, onApplySuggestion, setAppError }) => {
+        const AIUpdateModal = ({ task, loggedInUserType, onClose, onApplySuggestion, setAppError }) => {
             const { useState } = React;
             const [suggestedProgress, setSuggestedProgress] = useState(task.progress || 0);
             const [suggestedStatus, setSuggestedStatus] = useState(task.status || "Not Started");
@@ -1575,21 +1597,24 @@ Keep the entire response under 150 words.`;
             return (
                 React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm" },
                     React.createElement("div", { className: "modal-content p-6 rounded-xl shadow-xl w-full max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto" },
-                        React.createElement("h2", { className: "text-xl sm:text-2xl font-semibold mb-6 text-purple-600 flex items-center" }, React.createElement(Zap, { size: 22, className: "mr-2" }), "AI Update for \"", task.taskName, "\""),
+                        React.createElement("h2", { className: "text-xl sm:text-2xl font-semibold mb-6 text-purple-600 flex items-center" }, 
+                            React.createElement(Zap, { size: 22, className: "mr-2" }), 
+                            loggedInUserType === 'admin' ? `AI Update for "${task.taskName}"` : `AI Suggestions for "${task.taskName}"`
+                        ),
                         React.createElement("div", { className: "space-y-4" },
                             React.createElement("div", null,
                                 React.createElement("label", { className: "modal-label block text-sm font-medium mb-1" }, "Progress (%)"),
-                                React.createElement("input", { type: "number", min: "0", max: "100", value: suggestedProgress, onChange: (e) => setSuggestedProgress(parseInt(e.target.value, 10) || 0), className: "w-full p-2 modal-input rounded-md" })
+                                React.createElement("input", { type: "number", min: "0", max: "100", value: suggestedProgress, onChange: (e) => setSuggestedProgress(parseInt(e.target.value, 10) || 0), className: "w-full p-2 modal-input rounded-md", disabled: loggedInUserType === 'client' })
                             ),
                             React.createElement("div", null,
                                 React.createElement("label", { className: "modal-label block text-sm font-medium mb-1" }, "Status"),
-                                React.createElement("select", { value: suggestedStatus, onChange: (e) => setSuggestedStatus(e.target.value), className: "w-full p-2 modal-input rounded-md" },
+                                React.createElement("select", { value: suggestedStatus, onChange: (e) => setSuggestedStatus(e.target.value), className: "w-full p-2 modal-input rounded-md", disabled: loggedInUserType === 'client' },
                                     TASK_STATUSES.map((s) => (React.createElement("option", { key: s, value: s }, s)))
                                 )
                             ),
                             React.createElement("div", null,
                                 React.createElement("label", { className: "modal-label block text-sm font-medium mb-1" }, "Notes (Manual or AI-Generated)"),
-                                React.createElement("textarea", { rows: "4", value: suggestedNotes, onChange: (e) => setSuggestedNotes(e.target.value), className: "w-full p-2 modal-input rounded-md" })
+                                React.createElement("textarea", { rows: "4", value: suggestedNotes, onChange: (e) => setSuggestedNotes(e.target.value), className: "w-full p-2 modal-input rounded-md", readOnly: loggedInUserType === 'client' })
                             ),
                             generationError && React.createElement("p", { className: "text-xs text-red-600" }, generationError),
                             React.createElement("button", {
@@ -1603,8 +1628,8 @@ Keep the entire response under 150 words.`;
                             )
                         ),
                         React.createElement("div", { className: "flex justify-end gap-3 pt-6" },
-                            React.createElement("button", { type: "button", onClick: onClose, className: "px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-md text-slate-700" }, "Cancel"),
-                            React.createElement("button", { type: "button", onClick: () => { onApplySuggestion(task.id, { progress: suggestedProgress, status: suggestedStatus, notes: suggestedNotes }); onClose(); }, className: "px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-md text-white font-semibold flex items-center" }, React.createElement(CheckCircle, { size: 18, className: "mr-2" }), "Apply Suggestions")
+                            React.createElement("button", { type: "button", onClick: onClose, className: "px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-md text-slate-700" }, "Close"),
+                            loggedInUserType === 'admin' && React.createElement("button", { type: "button", onClick: () => { onApplySuggestion(task.id, { progress: suggestedProgress, status: suggestedStatus, notes: suggestedNotes }); onClose(); }, className: "px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-md text-white font-semibold flex items-center" }, React.createElement(CheckCircle, { size: 18, className: "mr-2" }), "Apply Suggestions")
                         )
                     )
                 )
