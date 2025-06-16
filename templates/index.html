@@ -526,7 +526,7 @@
                 const p2 = parts[1];
                 const p3 = parts[2];
 
-                // Check for<x_bin_660>-MM-dd
+                // Check for yyyy-MM-dd
                 if (p1.length === 4 && p2.length === 2 && p3.length === 2) {
                     return cleanedDateStr;
                 }
@@ -670,10 +670,17 @@
         const generateCSV = (tasksToExport, allTasksForDepLookup) => {
             const headers = ["WBS", "Task Name", "Original Duration (Days)", "Planned Start Date", "Planned End Date", "Actual Start Date", "Actual End Date", "Progress (%)", "Status", "Is Critical", "Predecessors", "Weather Delay (Days)", "Contractor Delay (Days)", "Client Delay (Days)", "Is Client Deliverable", "Notes", "Client Communications Log"];
             const rows = tasksToExport.map(task => {
-                const clientCommLog = (task.clientComments || []).map(cc =>
-                    `Admin (${formatDateForDisplay(cc.adminTimestamp)}): ${cc.adminComment.replace(/"/g, '""')}` +
-                    (cc.clientStatus ? ` | Client (${formatDateForDisplay(cc.clientResponseTimestamp)}): ${cc.clientStatus}` : '')
-                ).join(' || ');
+                const clientCommLog = (task.clientComments || []).map(cc => {
+                    let log = `Admin (${formatDateForDisplay(cc.adminTimestamp)}): ${cc.adminComment.replace(/"/g, '""')}`;
+                    if (cc.clientStatus) {
+                        log += ` | Client (${formatDateForDisplay(cc.clientResponseTimestamp)}): ${cc.clientStatus}`;
+                        if (cc.clientComment) {
+                            log += ` - Comment: ${cc.clientComment.replace(/"/g, '""')}`;
+                        }
+                    }
+                    return log;
+                }).join(' || ');
+
                 return [
                     task.wbs || '', task.taskName || '', task.originalDurationDays || 0,
                     formatDateForExport(task.plannedStartDate), formatDateForExport(task.plannedEndDate),
@@ -1249,11 +1256,11 @@
                 handleUpdateTask(taskId, { clientComments: [...(task.clientComments || []), newComment] });
             };
 
-            const handleClientCommentResponse = (taskId, commentId, status) => {
+            const handleClientCommentResponse = (taskId, commentId, status, clientComment) => {
                 const task = tasks.find(t => t.id === taskId);
                 if (!task) return setAppError('Task not found');
                 const updatedComments = task.clientComments.map(c =>
-                    c.id === commentId ? { ...c, clientStatus: status, clientResponseTimestamp: new Date().toISOString() } : c
+                    c.id === commentId ? { ...c, clientStatus: status, clientResponseTimestamp: new Date().toISOString(), clientComment: clientComment } : c
                 );
                 handleUpdateTask(taskId, { clientComments: updatedComments });
             };
@@ -1737,8 +1744,23 @@ Keep the entire response under 150 words.`;
             );
         };
         const ClientCommunicationModal = ({ task, loggedInUserType, onClose, onAdminAddComment, onClientRespond }) => {
-            const { useState } = React; const [adminCommentText, setAdminCommentText] = useState(""); const [selectedStatus, setSelectedStatus] = useState("");
+            const { useState } = React; 
+            const [adminCommentText, setAdminCommentText] = useState(""); 
+            const [selectedStatus, setSelectedStatus] = useState("");
+            const [clientCommentText, setClientCommentText] = useState('');
             const latestComment = (task.clientComments && task.clientComments.length > 0) ? task.clientComments[task.clientComments.length - 1] : null;
+            
+            const handleSendResponse = () => {
+                if (latestComment && selectedStatus) {
+                    onClientRespond(task.id, latestComment.id, selectedStatus, clientCommentText);
+                    setSelectedStatus("");
+                    setClientCommentText("");
+                    onClose();
+                }
+            };
+
+            const isButtonDisabled = !selectedStatus || (selectedStatus === 'Return with Comments' && !clientCommentText.trim());
+
             return (
                 React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm" },
                     React.createElement("div", { className: "modal-content p-6 rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" },
@@ -1753,7 +1775,12 @@ Keep the entire response under 150 words.`;
                                                 React.createElement("li", { key: cc.id, className: "mb-2 p-2.5 rounded-md border text-xs " + (cc.clientStatus ? "bg-green-50 border-green-200" : "bg-sky-50 border-sky-200") },
                                                     React.createElement("span", { className: "block font-medium text-slate-700" }, "Admin (", new Date(cc.adminTimestamp).toLocaleString(), "):"),
                                                     React.createElement("p", { className: "text-slate-600 mt-0.5 whitespace-pre-wrap" }, cc.adminComment),
-                                                    cc.clientStatus && (React.createElement(React.Fragment, null, React.createElement("hr", { className: "my-2 border-slate-300" }), React.createElement("span", { className: "block font-medium text-slate-700" }, "Client (", new Date(cc.clientResponseTimestamp).toLocaleString(), "):"), React.createElement("p", { className: "text-slate-600 mt-0.5 whitespace-pre-wrap" }, React.createElement("strong", null, cc.clientStatus))))
+                                                    cc.clientStatus && (React.createElement(React.Fragment, null, 
+                                                        React.createElement("hr", { className: "my-2 border-slate-300" }), 
+                                                        React.createElement("span", { className: "block font-medium text-slate-700" }, "Client (", new Date(cc.clientResponseTimestamp).toLocaleString(), "):"), 
+                                                        React.createElement("p", { className: "text-slate-600 mt-0.5 whitespace-pre-wrap" }, React.createElement("strong", null, cc.clientStatus)),
+                                                        cc.clientComment && React.createElement("p", { className: "text-slate-500 mt-1 pl-2 border-l-2 border-slate-300" }, cc.clientComment)
+                                                    ))
                                                 )
                                             ))
                                         )
@@ -1776,14 +1803,22 @@ Keep the entire response under 150 words.`;
                                     latestComment && !latestComment.clientStatus ? (React.createElement("div", { className: "p-3 bg-sky-50 rounded-md text-sm text-slate-700 border border-sky-200" }, React.createElement("strong", null, new Date(latestComment.adminTimestamp).toLocaleString(), ":"), React.createElement("p", { className: "mt-1 whitespace-pre-wrap" }, latestComment.adminComment))) : latestComment && latestComment.clientStatus ? (React.createElement("p", { className: "text-sm italic text-slate-500 p-3 bg-slate-50 rounded-md border" }, "You have already responded to the latest comment.")) : (React.createElement("p", { className: "text-sm italic text-slate-500 p-3 bg-slate-50 rounded-md border" }, "No pending comments from Admin."))
                                 ),
                                 latestComment && !latestComment.clientStatus && (
-                                    React.createElement("div", null,
-                                        React.createElement("label", { htmlFor: "clientStatus", className: "modal-label block text-sm font-medium mb-1" }, "Your Response"),
-                                        React.createElement("select", { id: "clientStatus", className: "w-full p-2 modal-input rounded-md", value: selectedStatus, onChange: (e) => setSelectedStatus(e.target.value) }, React.createElement("option", { value: "" }, "Select a response status..."), CLIENT_COMMENT_STATUSES.map((st) => (React.createElement("option", { key: st, value: st }, st))))
+                                    React.createElement(React.Fragment, null,
+                                        React.createElement("div", null,
+                                            React.createElement("label", { htmlFor: "clientStatus", className: "modal-label block text-sm font-medium mb-1" }, "Your Response"),
+                                            React.createElement("select", { id: "clientStatus", className: "w-full p-2 modal-input rounded-md", value: selectedStatus, onChange: (e) => setSelectedStatus(e.target.value) }, React.createElement("option", { value: "" }, "Select a response status..."), CLIENT_COMMENT_STATUSES.map((st) => (React.createElement("option", { key: st, value: st }, st))))
+                                        ),
+                                        selectedStatus === 'Return with Comments' && (
+                                            React.createElement("div", { className: "mt-4" },
+                                                React.createElement("label", { htmlFor: "clientCommentText", className: "modal-label block text-sm font-medium mb-1" }, "Your Comments"),
+                                                React.createElement("textarea", { id: "clientCommentText", rows: "3", className: "w-full p-2 modal-input rounded-md", value: clientCommentText, onChange: (e) => setClientCommentText(e.target.value) })
+                                            )
+                                        )
                                     )
                                 ),
                                 React.createElement("div", { className: "flex justify-end gap-3 pt-4" },
                                     React.createElement("button", { type: "button", onClick: onClose, className: "px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-md text-slate-700" }, "Close"),
-                                    latestComment && !latestComment.clientStatus && React.createElement("button", { type: "button", onClick: () => { if (latestComment && selectedStatus) { onClientRespond(task.id, latestComment.id, selectedStatus); setSelectedStatus(""); onClose(); } }, className: "px-4 py-2 bg-green-600 hover:bg-green-700 rounded-md text-white font-semibold flex items-center", disabled: !selectedStatus }, React.createElement(SendIcon, { size: 16, className: "mr-2" }), "Send Response")
+                                    latestComment && !latestComment.clientStatus && React.createElement("button", { type: "button", onClick: handleSendResponse, className: "px-4 py-2 bg-green-600 hover:bg-green-700 rounded-md text-white font-semibold flex items-center", disabled: isButtonDisabled }, React.createElement(SendIcon, { size: 16, className: "mr-2" }), "Send Response")
                                 )
                             )
                         )
