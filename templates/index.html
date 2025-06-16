@@ -1566,8 +1566,21 @@
 
 
         const EditTaskModal = ({ task, onClose, onSave }) => {
-            const { useState, useEffect } = React;
+            const { useState, useEffect, useRef } = React;
             const [formData, setFormData] = useState({ ...task });
+            const modalContentRef = useRef(null);
+
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (modalContentRef.current && !modalContentRef.current.contains(event.target)) {
+                        onClose();
+                    }
+                };
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => {
+                    document.removeEventListener("mousedown", handleClickOutside);
+                };
+            }, [onClose]);
 
             useEffect(() => {
                 setFormData({ ...task });
@@ -1581,7 +1594,7 @@
                 onSave(finalData);
             };
             return (React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm" }, 
-                React.createElement("div", { className: "modal-content p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto" }, 
+                React.createElement("div", { ref: modalContentRef, className: "modal-content p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto" }, 
                 React.createElement("h2", { className: "text-xl sm:text-2xl font-semibold mb-6 text-sky-600" }, "Edit Task: ", React.createElement("span", {className: "font-bold"}, task.taskName)), React.createElement("form", { onSubmit: handleSubmit, className: "space-y-4" },
                 React.createElement("div", null, React.createElement("label", { htmlFor: "progress", className: "modal-label block text-sm font-medium mb-1" }, "Progress (%)"), React.createElement("input", { type: "number", name: "progress", id: "progress", value: formData.progress || 0, onChange: handleChange, min: "0", max: "100", className: "w-full p-2 modal-input rounded-md" })),
                 React.createElement("div", null, React.createElement("label", { htmlFor: "status", className: "modal-label block text-sm font-medium mb-1" }, "Status"), React.createElement("select", { name: "status", id: "status", value: formData.status, onChange: handleChange, className: "w-full p-2 modal-input rounded-md" }, TASK_STATUSES.map(s => React.createElement("option", { key: s, value: s }, s)))),
@@ -1598,12 +1611,25 @@
         };
 
         const AIUpdateModal = ({ task, loggedInUserType, onClose, onApplySuggestion, setAppError }) => {
-            const { useState } = React;
+            const { useState, useEffect, useRef } = React;
             const [suggestedProgress, setSuggestedProgress] = useState(task.progress || 0);
             const [suggestedStatus, setSuggestedStatus] = useState(task.status || "Not Started");
             const [suggestedNotes, setSuggestedNotes] = useState("");
             const [isGeneratingRiskAssessment, setIsGeneratingRiskAssessment] = useState(false);
             const [generationError, setGenerationError] = useState(null);
+            const modalContentRef = useRef(null);
+
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (modalContentRef.current && !modalContentRef.current.contains(event.target)) {
+                        onClose();
+                    }
+                };
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => {
+                    document.removeEventListener("mousedown", handleClickOutside);
+                };
+            }, [onClose]);
 
             const handleGenerateRiskAssessment = async () => {
                 setIsGeneratingRiskAssessment(true);
@@ -1668,7 +1694,7 @@ Keep the entire response under 150 words.`;
 
             return (
                 React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm" },
-                    React.createElement("div", { className: "modal-content p-6 rounded-xl shadow-xl w-full max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto" },
+                    React.createElement("div", { ref: modalContentRef, className: "modal-content p-6 rounded-xl shadow-xl w-full max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto" },
                         React.createElement("h2", { className: "text-xl sm:text-2xl font-semibold mb-6 text-purple-600 flex items-center" }, 
                             React.createElement(Zap, { size: 22, className: "mr-2" }), 
                             loggedInUserType === 'admin' ? `AI Update for "${task.taskName}"` : `AI Suggestions for "${task.taskName}"`
@@ -1709,10 +1735,25 @@ Keep the entire response under 150 words.`;
         };
 
         const NotesModal = ({ task, loggedInUserType, onClose, onAddNote }) => {
-            const { useState } = React; const [noteText, setNoteText] = useState("");
+            const { useState, useEffect, useRef } = React; 
+            const [noteText, setNoteText] = useState("");
+            const modalContentRef = useRef(null);
+
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (modalContentRef.current && !modalContentRef.current.contains(event.target)) {
+                        onClose();
+                    }
+                };
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => {
+                    document.removeEventListener("mousedown", handleClickOutside);
+                };
+            }, [onClose]);
+
             return (
                 React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm" },
-                    React.createElement("div", { className: "modal-content p-6 rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" },
+                    React.createElement("div", { ref: modalContentRef, className: "modal-content p-6 rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" },
                         React.createElement("h2", { className: "text-xl font-semibold mb-4 text-green-600 flex items-center" }, React.createElement(MessageSquareIcon, { size: 20, className: "mr-2" }), loggedInUserType === 'admin' ? `Notes for "${task.taskName}"` : `View Notes for "${task.taskName}"`),
                         React.createElement("div", { className: "space-y-4" },
                             React.createElement("div", null,
@@ -1744,11 +1785,24 @@ Keep the entire response under 150 words.`;
             );
         };
         const ClientCommunicationModal = ({ task, loggedInUserType, onClose, onAdminAddComment, onClientRespond }) => {
-            const { useState } = React; 
+            const { useState, useEffect, useRef } = React; 
             const [adminCommentText, setAdminCommentText] = useState(""); 
             const [selectedStatus, setSelectedStatus] = useState("");
             const [clientCommentText, setClientCommentText] = useState('');
+            const modalContentRef = useRef(null);
             const latestComment = (task.clientComments && task.clientComments.length > 0) ? task.clientComments[task.clientComments.length - 1] : null;
+
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (modalContentRef.current && !modalContentRef.current.contains(event.target)) {
+                        onClose();
+                    }
+                };
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => {
+                    document.removeEventListener("mousedown", handleClickOutside);
+                };
+            }, [onClose]);
             
             const handleSendResponse = () => {
                 if (latestComment && selectedStatus) {
@@ -1763,7 +1817,7 @@ Keep the entire response under 150 words.`;
 
             return (
                 React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm" },
-                    React.createElement("div", { className: "modal-content p-6 rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" },
+                    React.createElement("div", { ref: modalContentRef, className: "modal-content p-6 rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" },
                         React.createElement("h2", { className: "text-xl font-semibold mb-6 text-sky-600 flex items-center" }, React.createElement(MessageSquareIcon, { size: 20, className: "mr-2" }), loggedInUserType === "admin" ? `Client Communication for "${task.taskName}"` : `Client Response for "${task.taskName}"`),
                         loggedInUserType === "admin" && (
                             React.createElement("div", { className: "space-y-4" },
