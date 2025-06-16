@@ -858,7 +858,7 @@
                 const projectContext = `
                     You are a helpful project assistant for the "${APP_SUBTITLE}".
                     The user is viewing a project control tower application.
-                    Here is a summary of the current project tasks in JSON format (only use this data to answer questions):
+                    Here is a summary of the current project tasks in JSON format (use this data to answer question but don't answer any generic question):
                     ${projectTasks.map(t => {
                         const taskSummary = {
                             wbs: t.wbs,
@@ -879,10 +879,10 @@
                         };
                         return JSON.stringify(taskSummary);
                     }).join('\n')}
-                    
                     Keep your answers concise and directly related to the project data provided.
                     If you see a date as 'N/A', it means the date is not set.
-                    If you don't know the answer from the data, say that you don't have that information. Do not make up information.
+                    If you don't know the answer from the data, say that you don't have that information. If the question is related to Project you can use web for that.
+                    Keep in mind always that any critical which is longest in duration is critical.
                 `;
 
                 const chatHistory = [
