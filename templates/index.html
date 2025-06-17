@@ -894,6 +894,8 @@
             const [inputValue, setInputValue] = useState('');
             const [isLoading, setIsLoading] = useState(false);
             const messagesEndRef = useRef(null);
+            
+            const predefinedQueries = ["Critical Activities", "Overall Project Progress", "Risk Assessment"];
 
             const scrollToBottom = () => {
                 messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -909,11 +911,10 @@
                 }
             }, [isOpen]);
 
-            const handleSendMessage = async (e) => {
-                e.preventDefault();
-                if (!inputValue.trim() || isLoading) return;
+            const sendQuery = async (queryText) => {
+                if (!queryText.trim() || isLoading) return;
 
-                const userMessage = { role: 'user', text: inputValue };
+                const userMessage = { role: 'user', text: queryText };
                 const newMessages = [...messages, userMessage];
                 setMessages(newMessages);
                 setInputValue('');
@@ -992,6 +993,11 @@
                     setIsLoading(false);
                 }
             };
+
+            const handleSendMessage = (e) => {
+                e.preventDefault();
+                sendQuery(inputValue);
+            };
             
             return (
                 React.createElement('div', { className: 'chatbot-container' },
@@ -1008,6 +1014,18 @@
                                         : msg.text
                                 )
                             )),
+                            messages.length === 1 && !isLoading && (
+                                React.createElement('div', {className: 'flex flex-col items-center gap-2 p-2'},
+                                    React.createElement('p', {className: 'text-xs text-slate-500 mb-1'}, 'Suggestions'),
+                                    predefinedQueries.map(query => (
+                                        React.createElement('button', {
+                                            key: query,
+                                            onClick: () => sendQuery(query),
+                                            className: 'w-full text-center px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg text-sm hover:bg-slate-200 transition-colors border border-slate-200'
+                                        }, query)
+                                    ))
+                                )
+                            ),
                             isLoading && React.createElement('div', { className: 'chat-message model' }, 
                                 React.createElement('div', { className: 'flex items-center gap-2' },
                                     React.createElement('div', {className: 'w-2 h-2 bg-slate-400 rounded-full animate-pulse'}),
