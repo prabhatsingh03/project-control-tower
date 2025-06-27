@@ -10,433 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
-    <style>
-        /* Basic body styling for light mode consistency */
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f1f5f9;
-            /* slate-100 (Subtle light gray) */
-            color: #1e293b;
-            /* slate-800 (Dark gray text) */
-        }
-
-        .file-input-button {
-            cursor: pointer;
-            padding: 0.5rem 1rem;
-            border-radius: 0.375rem;
-            font-weight: 600;
-            transition: background-color 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        /* Gantt Chart Styles for Light Theme */
-        .gantt-chart-container {
-            width: 100%;
-            overflow-x: auto;
-            padding: 30px;
-            background-color: #e2e8f0;
-            /* slate-200 */
-            border-radius: 0.5rem;
-            margin-top: 20px;
-            border: 1px solid #cbd5e1;
-            /* slate-300 */
-            position: relative;
-        }
-
-        .gantt-row {
-            display: flex;
-            align-items: center;
-            margin: 5px;
-            font-size: 0.8rem;
-            height: 25px;
-        }
-
-        .gantt-task-name-column {
-            width: 200px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            padding-right: 10px;
-            color: #334155;
-            /* slate-700 */
-            flex-shrink: 0;
-        }
-
-        .gantt-bars-area {
-            flex-grow: 1;
-            position: relative;
-            height: 100%;
-            display: flex;
-            /* Use flex for segmented bars */
-        }
-
-        .gantt-bar-segment {
-            /* Base for all segments */
-            height: 20px;
-            top: 2.5px;
-            color: #ffffff;
-            font-size: 0.7rem;
-            line-height: 20px;
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
-            padding-left: 5px;
-            padding-right: 5px;
-            box-sizing: border-box;
-            cursor: default;
-            display: flex;
-            align-items: center;
-        }
-
-        .gantt-bar-segment:first-child {
-            border-top-left-radius: 3px;
-            border-bottom-left-radius: 3px;
-        }
-
-        .gantt-bar-segment:last-child {
-            border-top-right-radius: 3px;
-            border-bottom-right-radius: 3px;
-        }
-
-        .gantt-bar-segment.is-critical {
-            border: 2px solid #dc2626;
-            z-index: 5;
-        }
-
-        .gantt-timeline-header {
-            display: flex;
-            margin-bottom: 8px;
-            padding-left: 210px;
-            position: sticky;
-            top: 0;
-            background-color: #e2e8f0;
-            z-index: 10;
-            height: 30px;
-            align-items: flex-end;
-        }
-
-        .gantt-timeline-unit {
-            flex-shrink: 0;
-            text-align: center;
-            font-size: 0.7rem;
-            color: #475569;
-            border-left: 1px solid #cbd5e1;
-            padding: 2px 0;
-            box-sizing: border-box;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-        }
-
-        .gantt-bar-Not-Started {
-            background-color: #9ca3af;
-        }
-
-        .gantt-bar-In-Progress {
-            background-color: #2563eb;
-        }
-
-        .gantt-bar-Completed {
-            background-color: #059669;
-        }
-
-        .gantt-bar-Delayed {
-            background-color: #dc2626;
-        }
-
-        .gantt-bar-On-Hold {
-            background-color: #d97706;
-        }
-
-        .gantt-bar-Ahead-of-Schedule {
-            background-color: #0284c7;
-        }
-
-        .gantt-bar-delay-Weather {
-            background-color: #bae6fd;
-            /* sky-200 */
-            color: #0369a1;
-            /* sky-700 */
-            border-left: 1px dashed #7dd3fc;
-        }
-
-        .gantt-bar-delay-contractor {
-            background-color: #fde68a;
-            /* amber-200 */
-            color: #b45309;
-            /* amber-700 */
-            border-left: 1px dashed #fbbf24;
-        }
-
-        .gantt-bar-delay-Client {
-            background-color: #fecaca;
-            /* red-200 */
-            color: #b91c1c;
-            /* red-700 */
-            border-left: 1px dashed #f87171;
-            /* red-400 */
-        }
-
-
-        .gantt-tooltip {
-            position: fixed;
-            background-color: #475569;
-            color: #f1f5f9;
-            border: 1px solid #334155;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            z-index: 1000;
-            pointer-events: none;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-            max-width: 300px;
-        }
-
-        .gantt-tooltip strong {
-            color: #cbd5e1;
-        }
-
-        .modal-content {
-            background-color: #f8fafc;
-            color: #1e293b;
-            border: 1px solid #e2e8f0;
-        }
-
-        .modal-input {
-            background-color: #ffffff;
-            color: #1e293b;
-            border: 1px solid #cbd5e1;
-        }
-
-        .modal-input:focus {
-            border-color: #38bdf8;
-            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.4);
-        }
-        
-        .modal-input:disabled {
-            background-color: #f1f5f9;
-            cursor: not-allowed;
-        }
-
-        .modal-label {
-            color: #475569;
-        }
-
-        .comment-bubble {
-            padding: 8px 12px;
-            border-radius: 10px;
-            margin-bottom: 8px;
-            max-width: 80%;
-            word-wrap: break-word;
-        }
-
-        .admin-comment {
-            background-color: #cffafe;
-            color: #0e7490;
-            margin-left: auto;
-            text-align: right;
-        }
-
-        .client-response {
-            background-color: #dcfce7;
-            color: #15803d;
-            margin-right: auto;
-            text-align: left;
-            font-style: italic;
-        }
-
-        .client-response-status-badge {
-            font-size: 0.7rem;
-            padding: 2px 6px;
-            border-radius: 10px;
-            margin-left: 8px;
-            font-weight: 500;
-        }
-
-        /* Spinner for AI Modal */
-        .ai-spinner {
-            border: 4px solid #f3f3f3;
-            /* Light grey */
-            border-top: 4px solid #60a5fa;
-            /* Blue */
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
-            margin-right: 8px;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-        
-        /* Chatbot Styles */
-        .chatbot-container {
-            position: fixed;
-            bottom: 1rem;
-            right: 1rem;
-            z-index: 1000;
-        }
-
-        .chatbot-toggle-button {
-            background-color: #1d4ed8; /* blue-700 */
-            color: white;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-        }
-        
-        .chatbot-toggle-button:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
-        }
-
-        .chat-window {
-            position: absolute;
-            bottom: 80px; /* Position above the button */
-            right: 0;
-            width: 350px;
-            height: 450px;
-            background-color: white;
-            border-radius: 1rem;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
-            transform-origin: bottom right;
-        }
-        
-        @media (max-width: 400px) {
-            .chat-window {
-                width: calc(100vw - 2rem);
-                height: 60vh;
-                left: -1rem;
-            }
-        }
-
-        .chat-window.closed {
-            opacity: 0;
-            transform: scale(0.9);
-            pointer-events: none;
-        }
-
-        .chat-header {
-            background-color: #1d4ed8; /* blue-700 */
-            color: white;
-            padding: 1rem;
-            font-weight: 600;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .chat-header button {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 1.2rem;
-            cursor: pointer;
-        }
-        
-        .chat-messages {
-            flex-grow: 1;
-            padding: 1rem;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-        
-        .chat-message {
-            padding: 0.5rem 1rem;
-            border-radius: 1rem;
-            max-width: 80%;
-            word-wrap: break-word;
-        }
-        
-        .chat-message.user {
-            background-color: #eff6ff; /* blue-50 */
-            color: #1e3a8a; /* blue-900 */
-            align-self: flex-end;
-            border-bottom-right-radius: 0.25rem;
-        }
-        
-        .chat-message.model {
-            background-color: #f1f5f9; /* slate-100 */
-            color: #334155; /* slate-700 */
-            align-self: flex-start;
-            border-bottom-left-radius: 0.25rem;
-        }
-
-        .chat-input-form {
-            border-top: 1px solid #e2e8f0; /* slate-200 */
-            padding: 0.5rem;
-            display: flex;
-            gap: 0.5rem;
-        }
-        
-        .chat-input-form input {
-            flex-grow: 1;
-            border: 1px solid #cbd5e1; /* slate-300 */
-            border-radius: 0.5rem;
-            padding: 0.5rem 0.75rem;
-            font-size: 0.875rem;
-        }
-        .chat-input-form input:focus {
-            outline: none;
-            border: 2px;
-            border-color: #3b82f6; /* blue-500 */
-        }
-        
-        .chat-input-form button {
-            background-color: #2563eb; /* blue-600 */
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            cursor: pointer;
-        }
-
-        .chat-input-form button:disabled {
-            background-color: #93c5fd; /* blue-300 */
-            cursor: not-allowed;
-        }
-
-        .chat-message .prose h3 {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            margin-top: 1rem;
-        }
-        .chat-message .prose ul {
-            list-style-type: disc;
-            padding-left: 1.25rem;
-            margin-top: 0.5rem;
-        }
-        .chat-message .prose p {
-            margin-top: 0.5rem;
-        }
-        .chat-message .prose li {
-            margin-bottom: 0.25rem;
-        }
-
-    </style>
+    <link rel="stylesheet" href="static/style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -467,6 +41,7 @@
         const Image = (props) => React.createElement(SVGIcon, props, React.createElement("rect", { x: "3", y: "3", width: "18", height: "18", rx: "2", ry: "2" }), React.createElement("circle", { cx: "8.5", cy: "8.5", r: "1.5" }), React.createElement("polyline", { points: "21 15 16 10 5 21" }));
         const LogOutIcon = (props) => React.createElement(SVGIcon, props, React.createElement("path", { d: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" }), React.createElement("polyline", { points: "16 17 21 12 16 7" }), React.createElement("line", { x1: "21", y1: "12", x2: "9", y2: "12" }));
         const UserIcon = (props) => React.createElement(SVGIcon, props, React.createElement("path", { d: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" }), React.createElement("circle", { cx: "12", cy: "7", r: "4" }));
+        const UserCheck = (props) => React.createElement(SVGIcon, props, React.createElement("path", {d: "M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"}), React.createElement("circle", {cx: "8.5", cy: "7", r: "4"}), React.createElement("polyline", {points: "17 11 19 13 23 9"}));
         const LockIcon = (props) => React.createElement(SVGIcon, props, React.createElement("rect", { x: "3", y: "11", width: "18", height: "11", rx: "2", ry: "2" }), React.createElement("path", { d: "M7 11V7a5 5 0 0 1 10 0v4" }));
         const ProjectIcon = (props) => React.createElement(SVGIcon, props, React.createElement("path", { d: "M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" }));
         const SendIcon = (props) => React.createElement(SVGIcon, props, React.createElement("line", { x1: "22", y1: "2", x2: "11", y2: "13" }), React.createElement("polygon", { points: "22 2 15 22 11 13 2 9 22 2" }));
@@ -478,16 +53,14 @@
         const AppIconPlaceholder = (props) => React.createElement("div", { className: `h-10 w-10 bg-slate-300 text-slate-500 flex items-center justify-center rounded text-sm font-bold ${props.className || ''}` }, "App");
         const LightbulbIcon = (props) => React.createElement(SVGIcon, props, React.createElement("path", { d: "M15.06 9A7 7 0 0 1 9 15.06M9 15.06c-1.33-1.33-2.06-3.06-2.06-4.94A5 5 0 0 1 12 5a5 5 0 0 1 5 5c0 1.88-.73 3.61-2.06 4.94" }), React.createElement("path", { d: "M12 1a7 7 0 0 0-7 7c0 1.62.66 3.1 1.67 4.22" }), React.createElement("path", { d: "M8 22h8" }), React.createElement("path", { d: "M10 19v3" }), React.createElement("path", { d: "M14 19v3" }));
         const ChatIcon = (props) => React.createElement(SVGIcon, props, React.createElement("path",{d:"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"}));
+        const MailIcon = (props) => React.createElement(SVGIcon, props, React.createElement("rect", {width:"20", height:"16", x:"2", y:"4", rx:"2"}), React.createElement("path", {d:"m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"}));
+        const InfoIcon = (props) => React.createElement(SVGIcon, props, React.createElement("circle", { cx: "12", cy: "12", r: "10" }), React.createElement("line", { x1: "12", y1: "16", x2: "12", y2: "12" }), React.createElement("line", { x1: "12", y1: "8", x2: "12.01", y2: "8" }));
+        const Trash2 = (props) => React.createElement(SVGIcon, props, React.createElement("polyline", { points: "3 6 5 6 21 6" }), React.createElement("path", { d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" }), React.createElement("line", { x1: "10", y1: "11", x2: "10", y2: "17" }), React.createElement("line", { x1: "14", y1: "11", x2: "14", y2: "17" }));
 
         // --- Configuration & Constants ---
         const APP_TITLE = "PROTON ";
         const APP_TITLE2= " by Simon India Limited";
-        const APP_SUBTITLE="640TPD Sulphur Melting Project";
-        const LOCAL_STORAGE_KEY = 'aiProjectControlTowerTasks_v6_dynamic';
-        const AUTH_STORAGE_KEY = 'aiProjectControlTowerAuth_v1';
-        const ADMIN_USERNAME = "admin";
-        const ADMIN_PASSWORD = "password123";
-        const VALID_PROJECT_NUMBER = "PROJ789";
+        const AUTH_STORAGE_KEY = 'aiProjectControlTowerAuth_v2';
         const TASK_STATUSES = ['Not Started', 'In Progress', 'Completed', 'Delayed', 'On Hold', 'Ahead of Schedule'];
         const CLIENT_COMMENT_STATUSES = ['Acknowledged', 'Approved', 'Return with Comments', 'Hold for Review'];
         const GEMINI_API_KEY = "AIzaSyC-e9tMROkfDJyReFeOEXCZ-oFkbtmEdjw";
@@ -526,7 +99,7 @@
                 const p2 = parts[1];
                 const p3 = parts[2];
 
-                // Check for yyyy-MM-dd
+                // Check for<x_bin_534>-MM-dd
                 if (p1.length === 4 && p2.length === 2 && p3.length === 2) {
                     return cleanedDateStr;
                 }
@@ -558,118 +131,21 @@
         const formatDateForExport = (dateStr) => dateStr || '';
         const formatDateForInput = (dateStr) => dateStr || '';
 
-        const parseCSV = (csvText) => {
-            const lines = csvText.trim().split(/\r\n|\n/);
-            if (lines.length < 2) throw new Error("CSV must have a header row and at least one data row.");
-
-            const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-            const lowerCaseHeaders = headers.map(h => h.toLowerCase());
-
-            // Define potential headers for each required field
-            const headerAliases = {
-                id: ['id', 'activity id'],
-                taskName: ['task name', 'activity name', 'name'],
-                start: ['start'],
-                finish: ['finish'],
-                predecessors: ['predecessors']
-            };
-
-            const headerIndices = {};
-            const missingRequired = [];
-
-            // Find index for 'ID'
-            const idHeader = headerAliases.id.find(h => lowerCaseHeaders.includes(h));
-            if (idHeader) {
-                headerIndices.id = lowerCaseHeaders.indexOf(idHeader);
-            } else {
-                missingRequired.push('ID / Activity ID');
-            }
-
-            // Find index for 'Task Name'
-            const taskNameHeader = headerAliases.taskName.find(h => lowerCaseHeaders.includes(h));
-            if (taskNameHeader) {
-                headerIndices.taskName = lowerCaseHeaders.indexOf(taskNameHeader);
-            } else {
-                missingRequired.push('Task Name / Activity Name / Name');
-            }
-
-            // Find index for 'Start'
-            const startHeader = headerAliases.start.find(h => lowerCaseHeaders.includes(h));
-            if (startHeader) {
-                headerIndices.start = lowerCaseHeaders.indexOf(startHeader);
-            } else {
-                missingRequired.push('Start');
-            }
-
-            // Find index for 'Finish'
-            const finishHeader = headerAliases.finish.find(h => lowerCaseHeaders.includes(h));
-            if (finishHeader) {
-                headerIndices.finish = lowerCaseHeaders.indexOf(finishHeader);
-            } else {
-                missingRequired.push('Finish');
-            }
-
-            if (missingRequired.length > 0) {
-                throw new Error(`CSV is missing required headers: ${missingRequired.join(', ')}.`);
-            }
-
-            // Find index for optional 'Predecessors'
-            const predecessorsHeader = headerAliases.predecessors.find(h => lowerCaseHeaders.includes(h));
-            headerIndices.predecessors = predecessorsHeader ? lowerCaseHeaders.indexOf(predecessorsHeader) : -1;
-
-            return lines.slice(1).map((line, rowIndex) => {
-                const values = [];
-                let currentVal = '';
-                let inQuotes = false;
-                for (let i = 0; i < line.length; i++) {
-                    const char = line[i];
-                    if (char === '"' && (i === 0 || line[i - 1] !== '\\')) {
-                        inQuotes = !inQuotes;
-                    } else if (char === ',' && !inQuotes) {
-                        values.push(currentVal.trim());
-                        currentVal = '';
-                    } else {
-                        currentVal += char;
-                    }
-                }
-                values.push(currentVal.trim());
-
-                if (values.length > 0 && values.some(v => v.length > 0)) {
-                    const taskData = {
-                        id: values[headerIndices.id]?.replace(/^"|"$/g, ''),
-                        taskName: values[headerIndices.taskName]?.replace(/^"|"$/g, ''),
-                        start: values[headerIndices.start]?.replace(/^"|"$/g, ''),
-                        finish: values[headerIndices.finish]?.replace(/^"|"$/g, ''),
-                        predecessors: headerIndices.predecessors !== -1 ? values[headerIndices.predecessors]?.replace(/^"|"$/g, '') : ''
-                    };
-
-                    if (!taskData.id || !taskData.taskName) {
-                        console.warn(`Row ${rowIndex + 1} is missing required ID or Task Name. Skipping.`);
-                        return null;
-                    }
-
-                    return taskData;
-                }
-                return null;
-            }).filter(task => task !== null);
-        };
-
-        const parsePredecessorString = (predecessorString) => {
-            if (!predecessorString) return [];
-            // Split by comma for multiple predecessors
-            const parts = predecessorString.split(',');
-            const predecessorIds = parts.map(part => {
-                // Use parseInt to extract the leading number, which is the ID.
-                // This handles "3FS+4d", "26SS+30d", and "17" all correctly.
-                const id = parseInt(part.trim(), 10);
-                return isNaN(id) ? null : String(id);
-            }).filter(id => id !== null);
-            return predecessorIds;
-        };
-
-        const generateCSV = (tasksToExport, allTasksForDepLookup) => {
+        const generateCSV = (tasksToExport) => {
             const headers = ["WBS", "Task Name", "Original Duration (Days)", "Planned Start Date", "Planned End Date", "Actual Start Date", "Actual End Date", "Progress (%)", "Status", "Is Critical", "Predecessors", "Weather Delay (Days)", "Contractor Delay (Days)", "Client Delay (Days)", "Is Client Deliverable", "Notes", "Client Communications Log"];
-            const rows = tasksToExport.map(task => {
+            
+            const flattenedTasks = [];
+            const flatten = (tasks) => {
+                tasks.forEach(task => {
+                    flattenedTasks.push(task);
+                    if (task.subtasks && task.subtasks.length > 0) {
+                        flatten(task.subtasks);
+                    }
+                });
+            };
+            flatten(tasksToExport);
+
+            const rows = flattenedTasks.map(task => {
                 const clientCommLog = (task.clientComments || []).map(cc => {
                     let log = `Admin (${formatDateForDisplay(cc.adminTimestamp)}): ${cc.adminComment.replace(/"/g, '""')}`;
                     if (cc.clientStatus) {
@@ -686,7 +162,7 @@
                     formatDateForExport(task.plannedStartDate), formatDateForExport(task.plannedEndDate),
                     formatDateForExport(task.actualStartDate), formatDateForExport(task.actualEndDate),
                     task.progress || 0, task.status || 'Not Started', task.isCritical ? 'Yes' : 'No',
-                    task.predecessorString || '', // Export the original string
+                    task.predecessorString || '',
                     task.delayWeatherDays || 0, task.delayContractorDays || 0,
                     task.delayClientDays || 0,
                     task.isClientDeliverable ? 'Yes' : 'No',
@@ -697,17 +173,72 @@
             return [headers.join(','), ...rows.map(row => row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(','))].join('\n');
         };
 
-        // --- OverallProgress Component ---
+        // --- NotificationToast Component ---
+        const NotificationToast = ({ message, type = 'info', onDismiss }) => {
+            const { useState, useEffect } = React;
+            const [show, setShow] = useState(false);
+
+            useEffect(() => {
+                setShow(true); // Animate in
+                const timer = setTimeout(() => {
+                    setShow(false); // Animate out
+                    setTimeout(onDismiss, 500); // Wait for animation to finish before calling dismiss
+                }, 5000);
+                return () => clearTimeout(timer);
+            }, [message, onDismiss]);
+
+            const typeClasses = {
+                info: 'bg-blue-500',
+                success: 'bg-green-500',
+                error: 'bg-red-500'
+            };
+            
+            const Icon = {
+                info: InfoIcon,
+                success: CheckCircle,
+                error: AlertTriangle
+            }[type];
+
+            return React.createElement('div', { className: `notification-toast ${show ? 'show' : ''}` },
+                React.createElement('div', {
+                    className: `flex items-center text-white text-sm font-medium px-4 py-3 rounded-lg shadow-lg ${typeClasses[type]}`
+                },
+                React.createElement(Icon, { size: 20, className: 'mr-2' }),
+                React.createElement('p', null, message)
+                )
+            );
+        };
+
+        // --- OverallProgress Component (FIXED) ---
         const OverallProgress = ({ tasks }) => {
             const { useMemo } = React;
+
             const overallProgress = useMemo(() => {
-                if (!tasks || tasks.length === 0) return 0;
-                const totalProgress = tasks.reduce((sum, task) => sum + (task.progress || 0), 0);
-                return Math.round(totalProgress / tasks.length);
+                // Find the main project task, typically with WBS '1'
+                const mainProjectTask = tasks.find(t => t.wbs === '1');
+                if (mainProjectTask) {
+                    return mainProjectTask.progress || 0;
+                }
+                // Fallback for safety, though should not be needed with WBS structure
+                return 0;
             }, [tasks]);
-            const totalWeatherDelay = useMemo(() => tasks.reduce((sum, task) => sum + (task.delayWeatherDays || 0), 0), [tasks]);
-            const totalContractorDelay = useMemo(() => tasks.reduce((sum, task) => sum + (task.delayContractorDays || 0), 0), [tasks]);
-            const totalClientDelay = useMemo(() => tasks.reduce((sum, task) => sum + (task.delayClientDays || 0), 0), [tasks]);
+            
+            const flattenedTasks = useMemo(() => {
+                const allTasks = [];
+                const flatten = (tasksToFlatten) => {
+                    if (!tasksToFlatten) return;
+                    tasksToFlatten.forEach(task => {
+                        allTasks.push(task);
+                        flatten(task.subtasks);
+                    });
+                };
+                flatten(tasks);
+                return allTasks;
+            }, [tasks]);
+
+            const totalWeatherDelay = useMemo(() => flattenedTasks.reduce((sum, task) => sum + (task.delayWeatherDays || 0), 0), [flattenedTasks]);
+            const totalContractorDelay = useMemo(() => flattenedTasks.reduce((sum, task) => sum + (task.delayContractorDays || 0), 0), [flattenedTasks]);
+            const totalClientDelay = useMemo(() => flattenedTasks.reduce((sum, task) => sum + (task.delayClientDays || 0), 0), [flattenedTasks]);
 
             return (
                 React.createElement("div", { className: "mb-6 p-4 bg-white shadow rounded-lg" },
@@ -734,6 +265,19 @@
             const GANTT_CHART_AREA_ID = "gantt-chart-render-area";
             const [tooltip, setTooltip] = useState({ visible: false, content: null, x: 0, y: 0 });
 
+            const flattenedTasks = useMemo(() => {
+                const allTasks = [];
+                const flatten = (tasksToFlatten) => {
+                    if (!tasksToFlatten) return;
+                    tasksToFlatten.forEach(task => {
+                        allTasks.push(task);
+                        flatten(task.subtasks);
+                    });
+                };
+                flatten(tasks);
+                return allTasks;
+            }, [tasks]);
+
             const handleMouseEnter = (event, task, segmentType = 'main') => {
                 let details = [
                     React.createElement("p", { key: "name" }, React.createElement("strong", null, "Task: "), task.taskName),
@@ -754,9 +298,9 @@
             const handleMouseLeave = () => { setTooltip({ visible: false, content: null, x: 0, y: 0 }); };
 
             const { projectStartDate, totalDays, timelineUnits } = useMemo(() => {
-                if (!tasks || tasks.length === 0) return { projectStartDate: null, totalDays: 0, timelineUnits: [] };
+                if (!flattenedTasks || flattenedTasks.length === 0) return { projectStartDate: null, totalDays: 0, timelineUnits: [] };
                 let minDate = null, maxDate = null;
-                tasks.forEach(task => {
+                flattenedTasks.forEach(task => {
                     if (task.plannedStartDate) { const d = new Date(task.plannedStartDate + 'T00:00:00Z'); if (!minDate || d < minDate) minDate = d; }
                     if (task.plannedEndDate) {
                         let effectiveEndDate = new Date(task.plannedEndDate + 'T00:00:00Z');
@@ -774,7 +318,7 @@
                     currentDate.setDate(currentDate.getDate() + 1);
                 }
                 return { projectStartDate: pStartDate, totalDays: tDays, timelineUnits: units };
-            }, [tasks]);
+            }, [flattenedTasks]);
 
             if (!projectStartDate) return React.createElement("div", { className: "text-center text-gray-400 py-4" }, "Not enough data for Gantt chart.");
             const getBarColorClass = (status) => `gantt-bar-${String(status || 'Not Started').replace(/\s+/g, '-')}`;
@@ -789,7 +333,7 @@
                             )
                         ))
                     ),
-                    tasks.map(task => {
+                    flattenedTasks.map(task => {
                         if (!task.plannedStartDate || !task.plannedEndDate) return null;
                         const taskStartDate = new Date(task.plannedStartDate + 'T00:00:00Z');
                         const taskPlannedEndDate = new Date(task.plannedEndDate + 'T00:00:00Z');
@@ -847,6 +391,7 @@
             );
         };
 
+
         // --- Markdown Renderer ---
         const SimpleMarkdownRenderer = ({ text }) => {
             let html = '';
@@ -886,8 +431,8 @@
             return React.createElement('div', { className: 'prose', dangerouslySetInnerHTML: { __html: html } });
         };
         
-        // --- Chatbot Component ---
-        const Chatbot = ({ projectTasks }) => {
+        // --- Chatbot Component (FIXED) ---
+        const Chatbot = ({ projectTasks, projectName }) => {
             const { useState, useEffect, useRef } = React;
             const [isOpen, setIsOpen] = useState(false);
             const [messages, setMessages] = useState([]);
@@ -895,7 +440,7 @@
             const [isLoading, setIsLoading] = useState(false);
             const messagesEndRef = useRef(null);
             
-            const predefinedQueries = ["Critical Activities", "Overall Project Progress", "Risk Assessment"];
+            const predefinedQueries = ["What are Critical Activities?", "Overall Project Progress", "Risk Assessment & Mitigation Ideas"];
 
             const scrollToBottom = () => {
                 messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -906,10 +451,10 @@
             useEffect(() => {
                 if(isOpen) {
                     setMessages([
-                        { role: 'model', text: 'Hi, How can I help you today?' }
+                        { role: 'model', text: `Hi, how can I help you with the "${projectName}" project today?` }
                     ]);
                 }
-            }, [isOpen]);
+            }, [isOpen, projectName]);
 
             const sendQuery = async (queryText) => {
                 if (!queryText.trim() || isLoading) return;
@@ -920,18 +465,31 @@
                 setInputValue('');
                 setIsLoading(true);
 
-                // Prepare context for the AI with more detailed information
+                // FIX: Flatten the entire task hierarchy to ensure all data is sent to the AI
+                const flattenTasks = (tasks) => {
+                    let flat = [];
+                    tasks.forEach(task => {
+                        flat.push(task);
+                        if (task.subtasks && task.subtasks.length > 0) {
+                            flat = flat.concat(flattenTasks(task.subtasks));
+                        }
+                    });
+                    return flat;
+                };
+
+                const allTasks = flattenTasks(projectTasks);
+
                 const projectContext = `
-                    You are a helpful project assistant for the "${APP_SUBTITLE}".
-                    The user is viewing a project control tower application.
-                    Here is a summary of the current project tasks in JSON format (use this data to answer question, You can also answer question that are not included in data but it should be related to project management.) :
-                    ${projectTasks.map(t => {
+                    You are a helpful project assistant for the "${projectName}" project.
+                    Here is a summary of the current project tasks in JSON format. Use this data to answer questions.
+
+                    ${allTasks.map(t => {
                         const taskSummary = {
                             wbs: t.wbs,
                             name: t.taskName,
                             status: t.status,
                             progress: t.progress,
-                            isCritical: t.isCritical,
+                            criticality: t.isCritical ? "This is a critical task" : "Not a critical task",
                             plannedStart: formatDateForDisplay(t.plannedStartDate),
                             plannedEnd: formatDateForDisplay(t.plannedEndDate),
                             actualStart: formatDateForDisplay(t.actualStartDate),
@@ -945,17 +503,17 @@
                         };
                         return JSON.stringify(taskSummary);
                     }).join('\n')}
-                    
-                    Please format your responses using Markdown for readability. Use headings, bold text, and bullet points where appropriate.
-                    Keep your answers concise.
-                    If you see a date as 'N/A', it means the date is not set.
-                    If you don't know the answer from the provided data, clearly state that. If the question is related to Project Management, you can use your general knowledge.
-                    When identifying a critical activity based on duration, explain that the activity with the longest duration is often on the critical path.
+
+                    ---
+                    IMPORTANT INSTRUCTIONS:
+                    1. Format your responses using simple Markdown for readability (headings, bold, bullets).
+                    2. When asked for "Critical Activities", search the JSON data for tasks where 'criticality' indicates it is a critical task. List ONLY the names of these tasks in a bulleted list. Do NOT show the JSON properties like 'criticality' in your answer. Just list the task names.
+                    3. If you don't know the answer from the provided data, clearly state that. If the question is related to Project Management in general, you can use your general knowledge.
                 `;
 
                 const chatHistory = [
                     { role: "user", parts: [{ text: projectContext }] },
-                    { role: "model", parts: [{ text: "Understood. I will act as a project assistant" }] },
+                    { role: "model", parts: [{ text: "Understood. I will act as a project assistant following all instructions." }] },
                     ...newMessages.map(msg => ({
                         role: msg.role,
                         parts: [{ text: msg.text }]
@@ -1055,426 +613,1091 @@
                 )
             );
         };
+        
+        // --- ApprovalDashboard Component ---
+        const ApprovalDashboard = ({ pendingAdmins, onApprove, onReject, setNotification, setAppError }) => {
+            const handleApproveClick = (email) => {
+                fetch('/api/approve_admin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email })
+                })
+                .then(res => {
+                    if (!res.ok) {
+                        return res.json().then(err => { throw new Error(err.message || 'Approval failed') });
+                    }
+                    return res.json();
+                })
+                .then(data => {
+                    onApprove(email); // Callback to update parent state
+                    setNotification({ message: data.message, type: 'success' });
+                })
+                .catch(err => setAppError(err.message));
+            };
 
+            const handleRejectClick = (email) => {
+                if (window.confirm(`Are you sure you want to reject and delete the admin request for ${email}? This action cannot be undone.`)) {
+                    fetch('/api/reject_admin', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: email })
+                    })
+                    .then(res => {
+                        if (!res.ok) {
+                            return res.json().then(err => { throw new Error(err.message || 'Rejection failed') });
+                        }
+                        return res.json();
+                    })
+                    .then(data => {
+                        onReject(email); // Callback to update parent state
+                        setNotification({ message: data.message, type: 'info' });
+                    })
+                    .catch(err => setAppError(err.message));
+                }
+            };
 
+            if (!pendingAdmins || pendingAdmins.length === 0) {
+                return null;
+            }
+
+            return React.createElement('div', { className: 'mb-6 p-4 bg-amber-100 border-l-4 border-amber-500 shadow rounded-lg' },
+                React.createElement('h3', { className: 'text-lg font-semibold text-amber-800 mb-2 flex items-center' }, 
+                    React.createElement(UserCheck, { size: 20, className: "mr-2" }),
+                    'Pending Admin Approvals'
+                ),
+                React.createElement('ul', { className: 'space-y-2' },
+                    pendingAdmins.map(admin => React.createElement('li', { 
+                        key: admin.email, 
+                        className: 'flex items-center justify-between bg-white p-2 rounded-md shadow-sm' 
+                      },
+                      React.createElement('span', { className: 'text-sm text-slate-700' }, admin.email),
+                      React.createElement('div', { className: 'flex items-center gap-2' },
+                          React.createElement('button', { 
+                              onClick: () => handleRejectClick(admin.email),
+                              className: 'px-3 py-1 bg-red-500 text-white text-xs font-semibold rounded-md hover:bg-red-600 transition-colors'
+                            },
+                            'Reject'
+                          ),
+                          React.createElement('button', { 
+                              onClick: () => handleApproveClick(admin.email),
+                              className: 'px-3 py-1 bg-green-500 text-white text-xs font-semibold rounded-md hover:bg-green-600 transition-colors'
+                            },
+                            'Approve'
+                          )
+                      )
+                    ))
+                )
+            );
+        };
+
+        // --- NEW COMPONENT: TaskDetailsModal ---
+        const TaskDetailsModal = ({ task, onClose, loggedInUserType }) => {
+            const { useEffect, useRef } = React;
+            const modalContentRef = useRef(null);
+
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (modalContentRef.current && !modalContentRef.current.contains(event.target)) {
+                        onClose();
+                    }
+                };
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => document.removeEventListener("mousedown", handleClickOutside);
+            }, [onClose]);
+
+            return React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm" },
+                React.createElement("div", { ref: modalContentRef, className: "modal-content p-6 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col" },
+                    React.createElement("h2", { className: "text-xl font-semibold mb-4 text-blue-600 border-b pb-2" }, "Details for: ", React.createElement("span", { className: "font-bold" }, task.taskName)),
+                    React.createElement("div", { className: "space-y-4 overflow-y-auto" },
+                        // Details Section
+                        React.createElement("div", null,
+                            React.createElement("h3", { className: "font-semibold text-slate-700 mb-2" }, "Key Info"),
+                            React.createElement("div", { className: "text-sm space-y-1" },
+                                React.createElement("p", { className: "text-slate-600" }, "Predecessors: ", React.createElement("strong", { className: "text-slate-800 font-medium" }, task.predecessorString || 'None')),
+                                React.createElement("p", { className: "text-slate-600" }, "Weather Delay: ", React.createElement("strong", { className: "text-slate-800 font-medium" }, task.delayWeatherDays || 0, " days")),
+                                React.createElement("p", { className: "text-slate-600" }, "Contractor Delay: ", React.createElement("strong", { className: "text-slate-800 font-medium" }, task.delayContractorDays || 0, " days")),
+                                React.createElement("p", { className: "text-slate-600" }, "Client Delay: ", React.createElement("strong", { className: "text-slate-800 font-medium" }, task.delayClientDays || 0, " days"))
+                            )
+                        ),
+                        // Notes Section (Conditional)
+                        loggedInUserType !== 'client' && React.createElement("div", null,
+                            React.createElement("h3", { className: "font-semibold text-slate-700 mb-2" }, "Notes"),
+                            (task.notes && task.notes.some(n => n.text)) ?
+                                React.createElement("ul", { className: "list-none space-y-2 max-h-48 overflow-y-auto pr-2" },
+                                    task.notes.filter(n => n.text).map((note, index) =>
+                                        React.createElement("li", { key: index, className: "text-xs bg-slate-50 p-2 rounded-md border border-slate-200" },
+                                            React.createElement("span", { className: "block font-medium text-slate-500" }, `[${new Date(note.timestamp).toLocaleString()}] [${note.source}]`),
+                                            React.createElement("p", { className: "text-slate-800 mt-1" }, note.text)
+                                        )
+                                    )
+                                ) : React.createElement("p", { className: "italic text-sm text-slate-500" }, "No notes for this task.")
+                        )
+                    ),
+                    React.createElement("div", { className: "flex justify-end pt-6 mt-auto" },
+                        React.createElement("button", { type: "button", onClick: onClose, className: "px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-md text-slate-700" }, "Close")
+                    )
+                )
+            );
+        };
+        
         // --- Main Application Component (App) ---
         const App = () => {
             const { useState, useEffect, useCallback, useMemo } = React;
-            const [loggedInUserType, setLoggedInUserType] = useState(null);
-            const [loginAttemptType, setLoginAttemptType] = useState('admin');
-            const [loginError, setLoginError] = useState('');
-            const [uploadedLogo, setUploadedLogo] = useState(null);
-            const [tasks, setTasks] = useState([]);
+            
+            // --- Helper function to find a task recursively ---
+            const findTaskByIdRecursively = (taskList, taskId) => {
+                for (const task of taskList) {
+                    if (task.id === taskId) {
+                        return task; // Found it
+                    }
+                    if (task.subtasks && task.subtasks.length > 0) {
+                        const foundInSubtasks = findTaskByIdRecursively(task.subtasks, taskId);
+                        if (foundInSubtasks) {
+                            return foundInSubtasks; // Found in a deeper level
+                        }
+                    }
+                }
+                return null; // Not found
+            };
+
+            // Authentication and User State
+            const [loggedInUser, setLoggedInUser] = useState(null);
             const [isLoading, setIsLoading] = useState(true);
+
+            // App-wide messages
             const [appError, setAppError] = useState(null);
-            const [successMessage, setSuccessMessage] = useState('');
+            const [notification, setNotification] = useState(null);
+
+            // Project and Task State
+            const [projects, setProjects] = useState([]);
+            const [selectedProject, setSelectedProject] = useState('');
+            const [tasks, setTasks] = useState([]);
+            const [pendingAdmins, setPendingAdmins] = useState([]);
+            
+            // UI State
             const [currentView, setCurrentView] = useState('admin');
             const [showEditModal, setShowEditModal] = useState(false);
             const [showAIModal, setShowAIModal] = useState(false);
             const [showNotesModal, setShowNotesModal] = useState(false);
             const [showClientCommModal, setShowClientCommModal] = useState(false);
+            const [showAddProjectModal, setShowAddProjectModal] = useState(false);
+            const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+            const [showDetailsModal, setShowDetailsModal] = useState(false);
             const [selectedTask, setSelectedTask] = useState(null);
+            const [addTaskTarget, setAddTaskTarget] = useState(null);
             const [searchTerm, setSearchTerm] = useState('');
-            const [sortBy, setSortBy] = useState({ field: 'plannedStartDate', order: 'asc' });
+            const [dateFilter, setDateFilter] = useState('');
+            const [sortBy, setSortBy] = useState({ field: 'wbs', order: 'asc' });
+            
+            const APP_SUBTITLE = selectedProject || "No Project Selected";
 
+            // --- Effects ---
+
+            // Initial Load: Check auth
             useEffect(() => {
                 const storedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
                 if (storedAuth) {
                     try {
                         const authData = JSON.parse(storedAuth);
-                        if (authData.userType && (authData.userType === 'admin' || authData.userType === 'client')) {
-                            setLoggedInUserType(authData.userType);
-                            if (authData.userType === 'client') setCurrentView('client');
+                        setLoggedInUser(authData);
+                        if(authData.userType === 'client') {
+                            setCurrentView('client');
+                            setSelectedProject(authData.project);
                         }
                     } catch (e) { localStorage.removeItem(AUTH_STORAGE_KEY); }
-                } else {
-                    setIsLoading(false);
                 }
-                
-                fetch('/api/logo')
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.path) {
-                            setUploadedLogo(data.path + '?' + new Date().getTime());
-                        }
-                    })
-                    .catch(err => console.log('No logo found on server.'));
+                setIsLoading(false);
             }, []);
+            
+            // Fetch projects and pending admins when user logs in
+            useEffect(() => {
+                if(loggedInUser) {
+                    setIsLoading(true);
+                    fetch('/api/projects')
+                        .then(res => res.json())
+                        .then(data => {
+                            setProjects(data);
+                            if (loggedInUser.userType !== 'client' && data.length > 0 && !selectedProject) {
+                                setSelectedProject(data[0].name);
+                            }
+                        })
+                        .catch(err => setAppError('Could not load projects list.'))
+                        .finally(() => setIsLoading(false));
+                    
+                    if (loggedInUser.userType === 'super_admin') {
+                        fetch('/api/pending_admins')
+                            .then(res => res.json())
+                            .then(data => setPendingAdmins(data))
+                            .catch(err => console.error("Could not fetch pending admins"));
+                    }
+                }
+            }, [loggedInUser]);
 
-            const loadInitialData = useCallback(() => {
+            // Fetch tasks when selectedProject changes
+            useEffect(() => {
+                if (loggedInUser && selectedProject) {
+                    loadInitialData(selectedProject);
+                } else {
+                    setTasks([]);
+                }
+            }, [loggedInUser, selectedProject]);
+
+
+            // Recursive function to update a task anywhere in the nested structure
+            const updateTaskRecursively = (tasks, taskId, updatedData) => {
+                return tasks.map(task => {
+                    if (task.id === taskId) {
+                        return { ...task, ...updatedData };
+                    }
+                    if (task.subtasks && task.subtasks.length > 0) {
+                        return { ...task, subtasks: updateTaskRecursively(task.subtasks, taskId, updatedData) };
+                    }
+                    return task;
+                });
+            };
+            
+            // --- Data Handling Callbacks ---
+            
+            const loadInitialData = useCallback((projectName) => {
                 setIsLoading(true);
-                fetch('/api/load')
+                fetch(`/api/load?project=${encodeURIComponent(projectName)}`)
                     .then(res => {
                         if (!res.ok) throw new Error('Fetch failed');
                         return res.json();
                     })
                     .then(raw => {
-                        let normalized;
-                        if (raw.length > 0 && raw[0].wbs !== undefined) {
-                            normalized = raw;
-                        } else {
-                            normalized = raw.map(t => ({
-                                id: t.id || String(t.ID) || generateUUID(),
-                                wbs: String(t.ID),
-                                taskName: t.Name || t['Task Name'] || '',
-                                plannedStartDate: parseCSVDate(t.Start || ''),
-                                plannedEndDate: parseCSVDate(t.Finish || ''),
-                                predecessorString: t.Predecessors || '',
-                                originalDurationDays: parseInt(t.Duration, 10) || 0,
-                                actualStartDate: null,
-                                actualEndDate: null,
-                                progress: 0,
-                                status: 'Not Started',
-                                notes: [],
-                                isClientDeliverable: false,
-                                isCritical: false,
-                                dependencies: [],
-                                clientComments: [],
-                                delayWeatherDays: 0,
-                                delayContractorDays: 0,
-                                delayClientDays: 0,
-                                isExpanded: false
-                            }));
-                        }
+                        // Recursive function to normalize tasks and their subtasks
+                        const normalizeTasks = (tasksToNormalize) => {
+                            if (!tasksToNormalize || !Array.isArray(tasksToNormalize)) return [];
+                            return tasksToNormalize.map(t => {
+                                const subtasks = (t.subtasks && t.subtasks.length > 0) ? normalizeTasks(t.subtasks) : [];
+                                
+                                let progress = t.progress || 0;
+                                // If task has subtasks, calculate its progress based on them
+                                if (subtasks.length > 0) {
+                                    const totalProgress = subtasks.reduce((sum, st) => sum + (st.progress || 0), 0);
+                                    progress = Math.round(totalProgress / subtasks.length);
+                                }
+
+                                return {
+                                    id: t.id || generateUUID(),
+                                    wbs: t.wbs || '',
+                                    taskName: t.taskName || '',
+                                    plannedStartDate: parseCSVDate(t.plannedStartDate || ''),
+                                    plannedEndDate: parseCSVDate(t.plannedEndDate || ''),
+                                    predecessorString: t.predecessorString || '',
+                                    originalDurationDays: String(t.originalDurationDays).replace(' days', '') || '0',
+                                    actualStartDate: parseCSVDate(t.actualStartDate || ''),
+                                    actualEndDate: parseCSVDate(t.actualEndDate || ''),
+                                    progress: progress,
+                                    status: t.status || 'Not Started',
+                                    notes: t.notes || [],
+                                    isClientDeliverable: t.isClientDeliverable || false,
+                                    isCritical: t.isCritical || false,
+                                    dependencies: t.dependencies || [],
+                                    clientComments: t.clientComments || [],
+                                    delayWeatherDays: t.delayWeatherDays || 0,
+                                    delayContractorDays: t.delayContractorDays || 0,
+                                    delayClientDays: t.delayClientDays || 0,
+                                    isExpanded: t.isExpanded !== undefined ? t.isExpanded : true,
+                                    subtasks: subtasks
+                                };
+                            });
+                        };
+
+                        const normalized = normalizeTasks(raw || []);
                         setTasks(normalized);
                     })
-                    .catch(err => setAppError('Could not load tasks: ' + err.message))
+                    .catch(err => setAppError(`Could not load tasks for ${projectName}: ` + err.message))
                     .finally(() => setIsLoading(false));
             }, []);
 
-            useEffect(() => {
-                if(loggedInUserType){
-                    loadInitialData();
-                }
-            }, [loggedInUserType, loadInitialData]);
+            // FIX: Function to recalculate parent progress from children
+            const recalculateParentProgress = (taskList) => {
+                return taskList.map(task => {
+                    if (task.subtasks && task.subtasks.length > 0) {
+                        // First, ensure all subtasks have their correct progress calculated
+                        const updatedSubtasks = recalculateParentProgress(task.subtasks);
+                        
+                        // Then, calculate this parent's progress from its updated children
+                        const totalProgress = updatedSubtasks.reduce((sum, st) => sum + (st.progress || 0), 0);
+                        const newProgress = Math.round(totalProgress / updatedSubtasks.length);
 
-            const handleAdminLogin = (username, password) => {
-                if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-                    setLoggedInUserType('admin'); setCurrentView('admin'); localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ userType: 'admin' })); setLoginError('');
-                }
-                else { setLoginError('Invalid admin username or password.'); }
+                        return { ...task, subtasks: updatedSubtasks, progress: newProgress };
+                    }
+                    return task; // Return task as is if it has no subtasks
+                });
             };
-            const handleClientLogin = (projectNumber) => {
-                if (projectNumber === VALID_PROJECT_NUMBER) {
-                    setLoggedInUserType('client'); setCurrentView('client'); localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ userType: 'client', project: projectNumber })); setLoginError('');
-                } else { setLoginError('Invalid project number.'); }
-            };
-            const handleLogout = () => { setLoggedInUserType(null); localStorage.removeItem(AUTH_STORAGE_KEY); setTasks([]); setCurrentView('admin'); };
 
             const handleUpdateTask = useCallback((taskId, updatedData) => {
-                const updatedTasks = tasks.map(t => t.id === taskId ? { ...t, ...updatedData } : t);
-                fetch('/api/save', {
+                let updatedTasks = updateTaskRecursively(tasks, taskId, updatedData);
+                // After any update, run the recalculation on the entire tree
+                updatedTasks = recalculateParentProgress(updatedTasks);
+
+                fetch(`/api/save?project=${encodeURIComponent(selectedProject)}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(updatedTasks)
                 })
-                    .then(res => {
-                        if (!res.ok) throw new Error('Save failed');
-                        return res.json();
-                    })
-                    .then(() => {
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                         setTasks(updatedTasks);
+                         setNotification({ message: 'Saved successfully', type: 'success' });
+                    } else {
+                        throw new Error(data.message || 'Save failed');
+                    }
+                })
+                .catch(err => setAppError('Save error: ' + err.message));
+            }, [tasks, selectedProject]);
+            
+            const handleConfirmAddTask = useCallback((targetTask, newTaskData) => {
+                if (!targetTask || !newTaskData) return;
+
+                const wbsParts = targetTask.wbs.split('.');
+                const lastPart = parseInt(wbsParts[wbsParts.length - 1], 10);
+                if (isNaN(lastPart)) {
+                    setAppError(`Cannot add a task after WBS '${targetTask.wbs}' as it does not end with a number.`);
+                    return;
+                }
+                wbsParts[wbsParts.length - 1] = (lastPart + 1).toString();
+                const newWbs = wbsParts.join('.');
+
+                const newTask = {
+                    id: generateUUID(),
+                    wbs: newWbs,
+                    taskName: newTaskData.taskName,
+                    plannedStartDate: newTaskData.plannedStartDate, 
+                    plannedEndDate: newTaskData.plannedEndDate,
+                    predecessorString: '',
+                    originalDurationDays: '1',
+                    actualStartDate: null, actualEndDate: null,
+                    progress: 0, status: 'Not Started', notes: [],
+                    isClientDeliverable: false, isCritical: false,
+                    dependencies: [], clientComments: [],
+                    delayWeatherDays: 0, delayContractorDays: 0, delayClientDays: 0,
+                    isExpanded: true, subtasks: []
+                };
+
+                const insertTaskRecursively = (taskList, targetId) => {
+                    for (let i = 0; i < taskList.length; i++) {
+                        if (taskList[i].id === targetId) {
+                            taskList.splice(i + 1, 0, newTask);
+                            return true;
+                        }
+                        if (taskList[i].subtasks && insertTaskRecursively(taskList[i].subtasks, targetId)) {
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+
+                const updatedTasks = JSON.parse(JSON.stringify(tasks));
+                insertTaskRecursively(updatedTasks, targetTask.id);
+
+                fetch(`/api/save?project=${encodeURIComponent(selectedProject)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedTasks)
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
                         setTasks(updatedTasks);
-                        setSuccessMessage('Saved successfully');
-                    })
-                    .catch(err => setAppError('Save error: ' + err.message));
-            }, [tasks]);
+                        setNotification({ message: 'New task added successfully.', type: 'success' });
+                    } else { throw new Error(data.message || 'Save failed'); }
+                })
+                .catch(err => setAppError('Save error: ' + err.message));
+
+            }, [tasks, selectedProject]);
+
+            const handleDeleteTask = useCallback((taskId) => {
+                if (!window.confirm("Are you sure you want to delete this task and all its subtasks? This action cannot be undone.")) {
+                    return;
+                }
+
+                const deleteTaskRecursively = (taskList, idToDelete) => {
+                    const newTaskList = taskList.filter(task => task.id !== idToDelete);
+                    if (newTaskList.length < taskList.length) {
+                        return newTaskList; // Task found and removed at this level
+                    }
+                    // If not found, search in subtasks
+                    return taskList.map(task => {
+                        if (task.subtasks && task.subtasks.length > 0) {
+                            return { ...task, subtasks: deleteTaskRecursively(task.subtasks, idToDelete) };
+                        }
+                        return task;
+                    });
+                };
+                
+                const updatedTasks = deleteTaskRecursively(tasks, taskId);
+
+                fetch(`/api/save?project=${encodeURIComponent(selectedProject)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedTasks)
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        setTasks(updatedTasks);
+                        setNotification({ message: 'Task deleted successfully.', type: 'info' });
+                    } else { throw new Error(data.message || 'Delete failed'); }
+                })
+                .catch(err => setAppError('Delete error: ' + err.message));
+
+            }, [tasks, selectedProject]);
+
+            const handleToggleExpansion = (taskId) => {
+                const toggle = (taskList) => {
+                    return taskList.map(t => {
+                        if (t.id === taskId) {
+                            return { ...t, isExpanded: !t.isExpanded };
+                        }
+                        if (t.subtasks && t.subtasks.length > 0) {
+                            return { ...t, subtasks: toggle(t.subtasks) };
+                        }
+                        return t;
+                    });
+                };
+                setTasks(toggle(tasks));
+            };
+
+
+            const handleToggleAllClientDeliverables = useCallback((shouldSelectAll) => {
+                const toggleRecursively = (taskList) => {
+                    return taskList.map(t => ({
+                        ...t,
+                        isClientDeliverable: shouldSelectAll,
+                        subtasks: t.subtasks ? toggleRecursively(t.subtasks) : []
+                    }));
+                };
+                const updatedTasks = toggleRecursively(tasks);
+
+                fetch(`/api/save?project=${encodeURIComponent(selectedProject)}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedTasks)
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                         setTasks(updatedTasks);
+                         const message = shouldSelectAll ? 'All tasks marked for client view.' : 'All tasks removed from client view.';
+                         setNotification({ message: message, type: 'success' });
+                    } else {
+                        throw new Error(data.message || 'Bulk update failed');
+                    }
+                })
+                .catch(err => setAppError('Save error: ' + err.message));
+            }, [tasks, selectedProject]);
 
 
             const handleFileUpload = event => {
                 const file = event.target.files[0];
-                if (!file) return;
+                if (!file || !selectedProject) return;
+                
                 const formData = new FormData();
                 formData.append('file', file);
-                fetch('/api/upload', { method: 'POST', body: formData })
-                    .then(res => { if (!res.ok) throw new Error('Upload failed'); return res.json(); })
-                    .then(() => {
-                        loadInitialData();
-                        setSuccessMessage('CSV imported');
-                    })
-                    .catch(err => setAppError('CSV upload failed: ' + err.message));
-                event.target.value = null;
-            };
-
-            const handleExportCSV = () => {
-                try {
-                    let tasksToExport;
-                    if (currentView === 'client') {
-                        tasksToExport = tasks.filter(task => task.isClientDeliverable);
-                    } else {
-                        tasksToExport = tasks;
-                    }
-                    const csvData = generateCSV(tasksToExport, tasks);
-                    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
-                    const link = document.createElement("a");
-                    if (link.download !== undefined) {
-                        const url = URL.createObjectURL(blob);
-                        link.setAttribute("href", url);
-                        link.setAttribute("download", "ai_project_control_tower_tasks.csv");
-                        link.style.visibility = 'hidden';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        setSuccessMessage('Tasks exported successfully as CSV.');
-                        setAppError(null);
-                    } else {
-                        setAppError('CSV export not supported by your browser.');
-                        setSuccessMessage('');
-                    }
-                } catch (err) {
-                    console.error("Error exporting CSV:", err);
-                    setAppError("Failed to export tasks: " + err.message);
-                    setSuccessMessage('');
-                }
-            };
-
-            const handleExportPDF = () => {
-                try {
-                    const { jsPDF } = window.jspdf; const doc = new jsPDF();
-                    doc.setFontSize(18); doc.text(APP_TITLE, 14, 22); doc.setFontSize(11); doc.setTextColor(100);
-
-                    let tasksForPdf;
-                    if (currentView === 'client') {
-                        tasksForPdf = tasks.filter(task => task.isClientDeliverable);
-                    } else {
-                        tasksForPdf = tasks;
-                    }
-
-                    const head = [['WBS', 'Task Name', 'Planned Start', 'Planned End', 'Status', 'Progress (%)', 'Critical']];
-                    const body = tasksForPdf.map(task => [task.wbs, task.taskName, formatDateForDisplay(task.plannedStartDate), formatDateForDisplay(task.plannedEndDate), task.status, task.progress || 0, task.isCritical ? 'Yes' : 'No']);
-
-                    doc.autoTable({
-                        startY: 30,
-                        head: head,
-                        body: body,
-                        theme: 'grid',
-                        headStyles: { fillColor: [186, 230, 253], textColor: [30, 41, 59] },
-                        styles: { fontSize: 8, cellPadding: 2, textColor: [30, 41, 59] },
-                        columnStyles: { 0: { cellWidth: 20 }, 1: { cellWidth: 'auto' } }
-                    });
-                    doc.save('ai_project_control_tower_schedule.pdf');
-                    setSuccessMessage('Schedule exported successfully as PDF.'); setAppError(null);
-                } catch (err) { console.error("Error exporting PDF:", err); setAppError("Failed to export PDF: " + err.message + ". Make sure jsPDF and autoTable are loaded."); setSuccessMessage(''); }
-            };
-            const handleExportGanttImage = () => {
-                try {
-                    const ganttElement = document.getElementById('gantt-chart-render-area');
-                    if (ganttElement && window.html2canvas) {
-                        window.html2canvas(ganttElement, { allowTaint: true, useCORS: true, backgroundColor: '#e2e8f0' }).then(canvas => {
-                            const image = canvas.toDataURL('image/png'); const link = document.createElement('a');
-                            link.download = 'gantt_chart_export.png'; link.href = image; link.click();
-                            setSuccessMessage('Gantt chart exported successfully as Image.'); setAppError(null);
-                        }).catch(err => { console.error("Error in html2canvas:", err); setAppError("Failed to capture Gantt chart: " + err.message); setSuccessMessage(''); });
-                    } else { setAppError('Gantt chart element not found or html2canvas not loaded.'); setSuccessMessage(''); }
-                } catch (err) { console.error("Error exporting Gantt image:", err); setAppError("Failed to export Gantt image: " + err.message); setSuccessMessage(''); }
-            };
-            const handleAddClientComment = (taskId, commentText) => {
-                const task = tasks.find(t => t.id === taskId);
-                if (!task) return setAppError('Task not found');
-                const newComment = { id: generateUUID(), adminComment: commentText, adminTimestamp: new Date().toISOString() };
-                handleUpdateTask(taskId, { clientComments: [...(task.clientComments || []), newComment] });
-            };
-
-            const handleClientCommentResponse = (taskId, commentId, status, clientComment) => {
-                const task = tasks.find(t => t.id === taskId);
-                if (!task) return setAppError('Task not found');
-                const updatedComments = task.clientComments.map(c =>
-                    c.id === commentId ? { ...c, clientStatus: status, clientResponseTimestamp: new Date().toISOString(), clientComment: clientComment } : c
-                );
-                handleUpdateTask(taskId, { clientComments: updatedComments });
-            };
-
-            const toggleTaskExpansion = (taskId) => { setTasks(prevTasks => prevTasks.map(task => task.id === taskId ? { ...task, isExpanded: !task.isExpanded } : task)); };
-            const openEditModal = (task) => { setSelectedTask(task); setShowEditModal(true); };
-            const openAIModal = (task) => { setSelectedTask(task); setShowAIModal(true); };
-            const openNotesModal = (task) => { setSelectedTask(task); setShowNotesModal(true); };
-            const openClientCommModal = (task) => { setSelectedTask(task); setShowClientCommModal(true); };
-            const handleLogoUpload = (event) => {
-                const file = event.target.files[0];
-                if (file && file.type.startsWith('image/')) {
-                    const formData = new FormData();
-                    formData.append('file', file);
-                    fetch('/api/logo', {
-                        method: 'POST',
-                        body: formData
-                    })
+                
+                fetch(`/api/upload?project=${encodeURIComponent(selectedProject)}`, { method: 'POST', body: formData })
                     .then(res => res.json())
                     .then(data => {
                         if (data.status === 'uploaded') {
-                            setUploadedLogo(data.path + '?' + new Date().getTime());
-                            setSuccessMessage("Logo uploaded successfully!");
+                             loadInitialData(selectedProject);
+                             setNotification({ message: 'CSV imported successfully and hierarchy built.', type: 'success' });
                         } else {
                             throw new Error(data.message || 'Upload failed');
                         }
                     })
-                    .catch(err => setAppError('Logo upload failed: ' + err.message));
-                } else {
-                    setAppError("Please select a valid image file (PNG, JPG, SVG).");
-                }
-                event.target.value = null;
+                    .catch(err => setAppError('CSV upload failed: ' + err.message));
+                event.target.value = null; // Reset file input
             };
-            const filteredAndSortedTasks = useMemo(() => {
-                const safeTasks = Array.isArray(tasks) ? tasks : []; let filtered = safeTasks;
-                if (currentView === 'client') { filtered = safeTasks.filter(task => task.isClientDeliverable); }
-                if (searchTerm) { filtered = (Array.isArray(filtered) ? filtered : []).filter(task => (task.taskName || '').toLowerCase().includes(searchTerm.toLowerCase()) || (task.wbs || '').toLowerCase().includes(searchTerm.toLowerCase())); }
-                return [...(Array.isArray(filtered) ? filtered : [])].sort((a, b) => {
-                    const fieldA = a[sortBy.field]; const fieldB = b[sortBy.field]; let comparison = 0;
-                    if (fieldA > fieldB) comparison = 1; else if (fieldA < fieldB) comparison = -1;
-                    return sortBy.order === 'asc' ? comparison : comparison * -1;
-                });
-            }, [tasks, currentView, searchTerm, sortBy]);
-            const handleSort = (field) => { setSortBy(prevSortBy => ({ field, order: prevSortBy.field === field && prevSortBy.order === 'asc' ? 'desc' : 'asc' })); };
-            useEffect(() => {
-                if (successMessage) { const timer = setTimeout(() => setSuccessMessage(''), 5000); return () => clearTimeout(timer); }
-                if (appError) { const timer = setTimeout(() => setAppError(null), 7000); return () => clearTimeout(timer); }
-            }, [successMessage, appError]);
+            
+            const handleAddProject = (projectName, clientAccessCode) => {
+                fetch('/api/projects', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ project_name: projectName, client_access_code: clientAccessCode })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if(data.status === 'success') {
+                        setProjects(prev => [...prev, data.project]);
+                        setSelectedProject(data.project.name);
+                        setShowAddProjectModal(false);
+                        setNotification({ message: `Project '${data.project.name}' added!`, type: 'success'});
+                    } else {
+                        throw new Error(data.message || 'Failed to add project');
+                    }
+                })
+                .catch(err => setAppError(err.message));
+            };
 
-            if (isLoading) {
+            // --- Auth Handlers ---
+            const handleLogin = (authData) => {
+                localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authData));
+                setLoggedInUser(authData);
+                if(authData.userType === 'client') {
+                    setCurrentView('client');
+                    setSelectedProject(authData.project);
+                } else {
+                    setCurrentView('admin');
+                }
+            };
+            
+            const handleLogout = () => {
+                localStorage.removeItem(AUTH_STORAGE_KEY);
+                setLoggedInUser(null);
+                setTasks([]);
+                setProjects([]);
+                setSelectedProject('');
+                setPendingAdmins([]);
+                setCurrentView('admin');
+            };
+
+            const handleAdminApproved = (approvedEmail) => {
+                setPendingAdmins(prev => prev.filter(admin => admin.email !== approvedEmail));
+            };
+
+            const handleAdminRejected = (rejectedEmail) => {
+                setPendingAdmins(prev => prev.filter(admin => admin.email !== rejectedEmail));
+            };
+            
+            const handleExport = (format) => {
+                let tasksToExport = (currentView === 'client') ? tasks.filter(task => task.isClientDeliverable) : tasks;
+                
+                if (format === 'csv') {
+                     const csvData = generateCSV(tasksToExport);
+                     const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+                     const link = document.createElement("a");
+                     link.href = URL.createObjectURL(blob);
+                     link.download = `${selectedProject}_tasks.csv`;
+                     link.click();
+                } else if (format === 'pdf') {
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF();
+                    doc.setFontSize(18); doc.text(APP_TITLE, 14, 22);
+                    doc.setFontSize(11); doc.setTextColor(100); doc.text(APP_SUBTITLE, 14, 28);
+                    
+                    const flattenedTasksForExport = [];
+                    const flatten = (tasks) => {
+                        tasks.forEach(task => {
+                            flattenedTasksForExport.push(task);
+                            if (task.subtasks) flatten(task.subtasks);
+                        });
+                    };
+                    flatten(tasksToExport);
+
+                    const head = [['WBS', 'Task Name', 'Planned Start', 'Planned End', 'Status', 'Progress (%)', 'Critical']];
+                    const body = flattenedTasksForExport.map(task => [task.wbs, task.taskName, formatDateForDisplay(task.plannedStartDate), formatDateForDisplay(task.plannedEndDate), task.status, task.progress || 0, task.isCritical ? 'Yes' : 'No']);
+
+                    doc.autoTable({ startY: 35, head, body, theme: 'grid' });
+                    doc.save(`${selectedProject}_schedule.pdf`);
+                } else if (format === 'gantt') {
+                    const ganttElement = document.getElementById('gantt-chart-render-area');
+                    if (!ganttElement || !window.html2canvas) {
+                        setAppError("Gantt chart element not found or library missing.");
+                        return;
+                    }
+
+                    // --- START OF THE FIX FOR CROPPING ---
+                    const fullWidth = ganttElement.scrollWidth;
+                    const fullHeight = ganttElement.scrollHeight;
+                    const clone = ganttElement.cloneNode(true);
+                    clone.querySelectorAll('svg').forEach(svg => svg.remove());
+                    clone.style.width = `${fullWidth}px`;
+                    clone.style.height = `${fullHeight}px`;
+                    clone.style.position = 'absolute';
+                    clone.style.left = '-9999px';
+                    clone.style.top = '0px';
+                    document.body.appendChild(clone);
+                    // --- END OF THE FIX FOR CROPPING ---
+
+                    window.html2canvas(clone, { 
+                        backgroundColor: '#ffffff',
+                        width: fullWidth,
+                        height: fullHeight,
+                        windowWidth: fullWidth,
+                        windowHeight: fullHeight,
+                        useCORS: true
+                    }).then(canvas => {
+                        const image = canvas.toDataURL('image/png', 1.0);
+                        const link = document.createElement('a');
+                        link.download = `${selectedProject}_gantt_chart.png`;
+                        link.href = image;
+                        link.click();
+                        setNotification({ message: `Exported as ${format.toUpperCase()} successfully`, type: 'success' });
+                    }).catch(err => {
+                        console.error("Failed to capture Gantt chart:", err);
+                        setAppError("Could not generate Gantt chart image. The library may have encountered an error.");
+                    }).finally(() => {
+                        document.body.removeChild(clone);
+                    });
+
+                    return; 
+                }
+                
+                setNotification({ message: `Exported as ${format.toUpperCase()} successfully`, type: 'success' });
+            };
+
+            const openEditModal = (task) => { setSelectedTask(task); setShowEditModal(true); };
+            const openAIModal = (task) => { setSelectedTask(task); setShowAIModal(true); };
+            const openNotesModal = (task) => { setSelectedTask(task); setShowNotesModal(true); };
+            const openClientCommModal = (task) => { setSelectedTask(task); setShowClientCommModal(true); };
+            const openDetailsModal = (task) => { setSelectedTask(task); setShowDetailsModal(true); };
+            const openAddTaskModal = (task) => { setAddTaskTarget(task); setShowAddTaskModal(true); };
+
+            const filteredAndSortedTasks = useMemo(() => {
+                let filtered = tasks;
+                
+                if (currentView === 'client') { 
+                    const filterDeliverables = (taskList) => {
+                        return taskList
+                            .map(task => ({ ...task, subtasks: filterDeliverables(task.subtasks || []) }))
+                            .filter(task => task.isClientDeliverable || task.subtasks.length > 0);
+                    };
+                    filtered = filterDeliverables(tasks);
+                }
+                
+                if (searchTerm || dateFilter) {
+                    const searchFilter = (taskList) => {
+                         return taskList.map(task => ({ ...task, subtasks: searchFilter(task.subtasks || []) }))
+                           .filter(task => {
+                               const matchesSearch = searchTerm ? 
+                                   (task.taskName || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                   (task.wbs || '').toLowerCase().includes(searchTerm.toLowerCase()) : 
+                                   true;
+                               
+                               const matchesDate = dateFilter ? 
+                                   task.plannedStartDate && task.plannedStartDate >= dateFilter :
+                                   true;
+
+                               return (matchesSearch && matchesDate) || (task.subtasks && task.subtasks.length > 0);
+                           });
+                    }
+                    filtered = searchFilter(filtered);
+                }
+
+                const sortRecursively = (taskList) => {
+                    taskList.sort((a, b) => {
+                        const fieldA = a[sortBy.field]; const fieldB = b[sortBy.field]; let comparison = 0;
+                        if (sortBy.field === 'wbs') {
+                            comparison = a.wbs.localeCompare(b.wbs, undefined, { numeric: true, sensitivity: 'base' });
+                        } else {
+                            if (fieldA > fieldB) comparison = 1; else if (fieldA < fieldB) comparison = -1;
+                        }
+                        return sortBy.order === 'asc' ? comparison : comparison * -1;
+                    });
+                    taskList.forEach(task => {
+                        if (task.subtasks) sortRecursively(task.subtasks);
+                    });
+                };
+                
+                const sorted = [...filtered];
+                sortRecursively(sorted);
+                return sorted;
+            }, [tasks, currentView, searchTerm, dateFilter, sortBy]);
+            
+            const handleSort = (field) => { setSortBy(prev => ({ field, order: prev.field === field && prev.order === 'asc' ? 'desc' : 'asc' })); };
+            
+            useEffect(() => {
+                if (appError) { const timer = setTimeout(() => setAppError(null), 7000); return () => clearTimeout(timer); }
+            }, [appError]);
+            
+            
+            // --- Render Logic ---
+
+            if (isLoading && !loggedInUser) {
                  return React.createElement("div", { key: "loader", className: "flex items-center justify-center h-screen" }, React.createElement("div", { className: "animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500" }), React.createElement("p", { className: "ml-4 text-xl text-slate-600" }, "Loading..."));
             }
-
-            if (!loggedInUserType) {
-                return React.createElement(LoginForm, { onAdminLogin: handleAdminLogin, onClientLogin: handleClientLogin, loginError: loginError, setLoginError: setLoginError, loginAttemptType: loginAttemptType, setLoginAttemptType: setLoginAttemptType, onLogoUpload: handleLogoUpload, currentLogo: uploadedLogo });
+            
+            if (!loggedInUser) {
+                return React.createElement(LoginForm, { 
+                    onLogin: handleLogin,
+                    setNotification: setNotification,
+                    setAppError: setAppError
+                });
             }
-
-            const mainReturnChildren = [
+            
+            const mainContent = React.createElement("div", { className: "min-h-screen bg-slate-100 p-2 sm:p-4 md:p-8 font-sans" },
+                // Header
                 React.createElement("header", { key: "header", className: "mb-6 p-4 bg-white shadow-md rounded-lg" },
                     React.createElement("div", { className: "flex flex-col sm:flex-row items-center justify-between" },
-                        React.createElement("div", { className: "flex items-center space-x-3 mb-4 sm:mb-0" }, 
-                          uploadedLogo ? React.createElement("img", { src: uploadedLogo, alt: "App Logo", className: "h-10 w-auto" }) : React.createElement(AppIconPlaceholder, { className: "text-sky-600" }), 
+                         React.createElement("div", { className: "flex items-center space-x-3 mb-4 sm:mb-0" }, 
+                          React.createElement("img", { src: 'static/logo.png', alt: "App Logo", className: "h-10 w-auto" }), 
                           React.createElement("div", null, 
-                          React.createElement("span", { className: "text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-600 to-blue-700" }, APP_TITLE),
-                          React.createElement("span", { className: "text-base bg-clip-text text-slate-500 italic" }, APP_TITLE2),
-                          React.createElement("h1", { className: "text-sm font-bold text-slate-500" }, APP_SUBTITLE)                          )
+                            React.createElement("span", { className: "text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-600 to-blue-700" }, APP_TITLE),
+                            React.createElement("span", { className: "text-base bg-clip-text text-slate-500 italic" }, APP_TITLE2),
+                            React.createElement("h1", { className: "text-sm font-bold text-slate-500" }, APP_SUBTITLE)
+                          )
                         ),
                         React.createElement("button", { onClick: handleLogout, className: "w-full sm:w-auto px-4 py-2 text-sm font-medium text-slate-700 bg-slate-200 hover:bg-slate-300 rounded-lg flex items-center justify-center" }, React.createElement(LogOutIcon, { size: 16, className: "mr-2" }), "Logout")
                     ),
-                    React.createElement("p", { className: "text-xs text-center text-slate-500 mt-4" }, `Logged in as: ${loggedInUserType === 'admin' ? 'Administrator' : 'Client (Project ' + VALID_PROJECT_NUMBER + ')'}.`),
-                    React.createElement("div", { className: "mt-4 flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-4" },
-                        loggedInUserType === 'admin' && React.createElement("button", { onClick: () => setCurrentView('admin'), className: `w-full sm:w-auto px-6 py-2 rounded-lg font-semibold transition-all duration-300 ${currentView === 'admin' ? 'bg-blue-600 text-white shadow-lg transform scale-105' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}` }, "Admin View"),
-                        React.createElement("button", { onClick: () => setCurrentView('client'), className: `w-full sm:w-auto px-6 py-2 rounded-lg font-semibold transition-all duration-300 ${currentView === 'client' ? 'bg-teal-600 text-white shadow-lg transform scale-105' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}` }, "Client View")
-                    )
-                )
-            ];
-            if (successMessage) { mainReturnChildren.push(React.createElement("div", { key: "success-msg", className: "mb-4 p-3 bg-green-100 border border-green-300 text-green-700 rounded-lg text-sm", role: "alert" }, successMessage)); }
-            if (appError) { mainReturnChildren.push(React.createElement("div", { key: "error-msg", className: "mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg text-sm", role: "alert" }, React.createElement("strong", null, "Error: "), appError, appError.includes("initial schedule") && React.createElement("button", { onClick: () => { localStorage.removeItem(LOCAL_STORAGE_KEY); localStorage.removeItem(AUTH_STORAGE_KEY); window.location.reload(); }, className: "ml-2 mt-1 sm:mt-0 sm:ml-auto px-2 py-0.5 bg-red-500 hover:bg-red-600 text-white text-xs rounded" }, "Reset Data & Reload"))); }
-
-            if (tasks.length > 0) { mainReturnChildren.push(React.createElement(OverallProgress, { key: "overall-progress", tasks: tasks })); }
-            mainReturnChildren.push(
-                React.createElement(React.Fragment, { key: "main-content" },
-                    React.createElement("div", { className: "mb-4 p-4 bg-white shadow-md rounded-lg flex flex-col sm:flex-row sm:items-center gap-4" }, 
-                        React.createElement("input", { type: "text", placeholder: "Search...", className: "flex-grow p-3 bg-slate-50 text-slate-700 rounded-md border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition-colors", value: searchTerm, onChange: (e) => setSearchTerm(e.target.value) }), 
-                        React.createElement("div", { className: "flex flex-wrap items-center justify-center sm:justify-end gap-2" }, 
-                            (loggedInUserType === 'admin' && currentView === 'admin') && React.createElement("label", { htmlFor: "csvUpload", className: "file-input-button bg-indigo-500 hover:bg-indigo-600 text-white" }, React.createElement(UploadCloud, { size: 18, className: "mr-2" }), React.createElement("span", {className: "hidden sm:inline"}, "Import CSV")), 
-                            (loggedInUserType === 'admin' && currentView === 'admin') && React.createElement("input", { type: "file", id: "csvUpload", accept: ".csv", className: "hidden", onChange: handleFileUpload }), 
-                            React.createElement("button", { onClick: handleExportCSV, className: "file-input-button bg-emerald-500 hover:bg-emerald-600 text-white" }, React.createElement(DownloadCloud, { size: 18, className: "mr-2" }), React.createElement("span", {className: "hidden sm:inline"}, "Export CSV")), 
-                            React.createElement("button", { onClick: handleExportPDF, className: "file-input-button bg-rose-500 hover:bg-rose-600 text-white" }, React.createElement(FileText, { size: 18, className: "mr-2" }), React.createElement("span", {className: "hidden sm:inline"}, "Export PDF")), 
-                            currentView === 'admin' && React.createElement("button", { onClick: handleExportGanttImage, className: "file-input-button bg-amber-500 hover:bg-amber-600 text-white" }, React.createElement(Image, { size: 18, className: "mr-2" }), React.createElement("span", {className: "hidden sm:inline"}, "Gantt"))
+                    // Project Selector and View Toggles
+                     React.createElement("div", { className: "mt-4 flex flex-col sm:flex-col justify-center items-center gap-4 mt-4" },
+                        loggedInUser.userType !== 'client' && React.createElement("div", {className: "flex items-center gap-2 w-full sm:w-auto"}, 
+                            React.createElement("select", { 
+                                value: selectedProject, 
+                                onChange: e => setSelectedProject(e.target.value),
+                                className: "flex-grow p-2 bg-slate-50 text-slate-700 rounded-md border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none"
+                            }, projects.map(p => React.createElement("option", { key: p.name, value: p.name }, p.name))),
+                            React.createElement("button", { onClick: () => setShowAddProjectModal(true), className: "p-2 bg-green-500 hover:bg-green-600 text-white rounded-md", title: "Add New Project" }, React.createElement(PlusCircle, {size: 20}))
+                        ),
+                        React.createElement("div", { className: "flex justify-center items-center space-x-2" },
+                            loggedInUser.userType !== 'client' && React.createElement("button", { onClick: () => setCurrentView('admin'), className: `px-6 py-2 rounded-lg font-semibold transition-all duration-300 ${currentView === 'admin' ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}` }, "Admin View"),
+                            React.createElement("button", { onClick: () => setCurrentView('client'), className: `px-6 py-2 rounded-lg font-semibold transition-all duration-300 ${currentView === 'client' ? 'bg-teal-600 text-white shadow-lg' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}` }, "Client View")
                         )
+                    )
+                ),
+                
+                // Notifications and Errors
+                notification && React.createElement(NotificationToast, { message: notification.message, type: notification.type, onDismiss: () => setNotification(null) }),
+                appError && React.createElement("div", { key: "error-msg", className: "mb-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-lg text-sm", role: "alert" }, React.createElement("strong", null, "Error: "), appError),
+                
+                loggedInUser.userType === 'super_admin' && React.createElement(ApprovalDashboard, {
+                    pendingAdmins: pendingAdmins,
+                    onApprove: handleAdminApproved,
+                    onReject: handleAdminRejected,
+                    setNotification: setNotification,
+                    setAppError: setAppError
+                }),
+
+                // Main Content Area
+                tasks.length > 0 && React.createElement(OverallProgress, { key: "overall-progress", tasks: tasks }),
+                React.createElement("div", { className: "mb-4 p-4 bg-white shadow-md rounded-lg flex flex-col sm:flex-row sm:items-center gap-4 flex-wrap" }, 
+                    React.createElement("input", { type: "text", placeholder: "Search tasks...", className: "flex-grow p-3 bg-slate-50 text-slate-700 rounded-md border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none", value: searchTerm, onChange: (e) => setSearchTerm(e.target.value) }),
+                    React.createElement("div", { className: "flex items-center gap-2" },
+                        React.createElement("label", { htmlFor: "dateFilter", className: "text-sm font-medium text-slate-600 flex-shrink-0" }, "Starts On/After:"),
+                        React.createElement("input", { 
+                            type: "date", 
+                            id: "dateFilter",
+                            className: "p-2 bg-slate-50 text-slate-700 rounded-md border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none", 
+                            value: dateFilter, 
+                            onChange: (e) => setDateFilter(e.target.value) 
+                        })
                     ),
-                    filteredAndSortedTasks.length > 0 ?
-                        React.createElement(TaskTable, { tasks: filteredAndSortedTasks, viewType: currentView, loggedInUserType: loggedInUserType, onUpdateTask: handleUpdateTask, onEditTask: openEditModal, onAIUpdate: openAIModal, onShowNotes: openNotesModal, onClientComm: openClientCommModal, onToggleClientDeliverable: (task, isDeliverable) => handleUpdateTask(task.id, { ...task, isClientDeliverable: isDeliverable }), onToggleExpansion: toggleTaskExpansion, sortBy: sortBy, onSort: handleSort }) :
-                        React.createElement("div", { className: "text-center py-10 bg-white shadow rounded-lg" }, React.createElement(MessageSquareIcon, { className: "mx-auto h-12 w-12 text-slate-400" }), React.createElement("h3", { className: "mt-2 text-lg font-medium text-slate-700" }, "No Tasks Found"), React.createElement("p", { className: "mt-1 text-sm text-slate-500 px-4" }, currentView === 'client' && !searchTerm ? "No tasks marked as client deliverables." : searchTerm ? "No tasks match your search criteria." : "No tasks available. Try importing a CSV if you are an Admin.")),
-                    ((currentView === 'admin' && loggedInUserType === 'admin') || currentView === 'client') && filteredAndSortedTasks.length > 0 && React.createElement(GanttChart, { tasks: filteredAndSortedTasks })
-                )
-            );
-            if (showEditModal && selectedTask && loggedInUserType === 'admin') { mainReturnChildren.push(React.createElement(EditTaskModal, { key: "edit-modal", task: selectedTask, onClose: () => setShowEditModal(false), onSave: (updatedTask) => { handleUpdateTask(selectedTask.id, updatedTask); setShowEditModal(false); } })); }
-            if (showAIModal && selectedTask) {
-                mainReturnChildren.push(React.createElement(AIUpdateModal, {
-                    key: "ai-modal",
-                    task: selectedTask,
-                    loggedInUserType: loggedInUserType,
-                    onClose: () => setShowAIModal(false),
+                    React.createElement("div", { className: "flex flex-wrap items-center justify-center sm:justify-end gap-2" }, 
+                        (loggedInUser.userType !== 'client' && currentView === 'admin') && React.createElement("label", { htmlFor: "csvUpload", className: "file-input-button bg-indigo-500 hover:bg-indigo-600 text-white" }, React.createElement(UploadCloud, { size: 18, className: "mr-2" }), React.createElement("span", {className: "hidden sm:inline"}, "Import CSV")), 
+                        (loggedInUser.userType !== 'client' && currentView === 'admin') && React.createElement("input", { type: "file", id: "csvUpload", accept: ".csv", className: "hidden", onChange: handleFileUpload, disabled: !selectedProject }), 
+                        React.createElement("button", { onClick: () => handleExport('csv'), className: "file-input-button bg-emerald-500 hover:bg-emerald-600 text-white", disabled: tasks.length === 0 }, React.createElement(DownloadCloud, { size: 18, className: "mr-2" }), React.createElement("span", {className: "hidden sm:inline"}, "Export CSV")), 
+                        React.createElement("button", { onClick: () => handleExport('pdf'), className: "file-input-button bg-rose-500 hover:bg-rose-600 text-white", disabled: tasks.length === 0 }, React.createElement(FileText, { size: 18, className: "mr-2" }), React.createElement("span", {className: "hidden sm:inline"}, "Export PDF")), 
+                        currentView === 'admin' && React.createElement("button", { onClick: () => handleExport('gantt'), className: "file-input-button bg-amber-500 hover:bg-amber-600 text-white", disabled: tasks.length === 0 }, React.createElement(Image, { size: 18, className: "mr-2" }), React.createElement("span", {className: "hidden sm:inline"}, "Gantt Image"))
+                    )
+                ),
+                filteredAndSortedTasks.length > 0 ?
+                    React.createElement(TaskTable, { 
+                        tasks: filteredAndSortedTasks, 
+                        viewType: currentView, 
+                        loggedInUserType: loggedInUser.userType, 
+                        onUpdateTask: handleUpdateTask, 
+                        onAddTask: openAddTaskModal,
+                        onDeleteTask: handleDeleteTask,
+                        onEditTask: openEditModal, 
+                        onAIUpdate: openAIModal, 
+                        onShowNotes: openNotesModal,
+                        onShowDetails: openDetailsModal,
+                        onClientComm: openClientCommModal, 
+                        onToggleClientDeliverable: (task, isDeliverable) => handleUpdateTask(task.id, { ...task, isClientDeliverable: isDeliverable }), 
+                        onToggleExpansion: handleToggleExpansion, 
+                        sortBy: sortBy, 
+                        onSort: handleSort,
+                        onToggleAllClientDeliverables: handleToggleAllClientDeliverables,
+                     }) :
+                    React.createElement("div", { className: "text-center py-10 bg-white shadow rounded-lg" }, React.createElement(MessageSquareIcon, { className: "mx-auto h-12 w-12 text-slate-400" }), React.createElement("h3", { className: "mt-2 text-lg font-medium text-slate-700" }, "No Tasks Found"), React.createElement("p", { className: "mt-1 text-sm text-slate-500 px-4" }, !selectedProject ? "Please select a project to view tasks." : currentView === 'client' && !searchTerm ? "No tasks marked as client deliverables for this project." : (searchTerm || dateFilter) ? "No tasks match your filter criteria." : "No tasks available. Try importing a CSV if you are an Admin.")),
+                ((currentView === 'admin' && loggedInUser.userType !== 'client') || currentView === 'client') && filteredAndSortedTasks.length > 0 && React.createElement(GanttChart, { tasks: filteredAndSortedTasks }),
+
+                // Modals
+                showDetailsModal && selectedTask && React.createElement(TaskDetailsModal, { task: selectedTask, onClose: () => setShowDetailsModal(false), loggedInUserType: loggedInUser.userType }),
+                showEditModal && selectedTask && React.createElement(EditTaskModal, { task: selectedTask, onClose: () => setShowEditModal(false), onSave: (updatedTask) => { handleUpdateTask(selectedTask.id, updatedTask); setShowEditModal(false); } }),
+                showAddProjectModal && React.createElement(AddProjectModal, { onClose: () => setShowAddProjectModal(false), onAdd: handleAddProject }),
+                showAddTaskModal && addTaskTarget && React.createElement(AddTaskModal, {
+                    onClose: () => { setShowAddTaskModal(false); setAddTaskTarget(null); },
+                    onAdd: (newTaskData) => { 
+                        handleConfirmAddTask(addTaskTarget, newTaskData);
+                        setShowAddTaskModal(false);
+                        setAddTaskTarget(null);
+                    }
+                }),
+                showAIModal && selectedTask && React.createElement(AIUpdateModal, {
+                    key: "ai-modal", task: selectedTask, allTasks: tasks, loggedInUserType: loggedInUser.userType, onClose: () => setShowAIModal(false),
                     onApplySuggestion: (taskId, suggestion) => {
-                      const t = tasks.find(t => t.id === taskId);
-                      if (!t) {
-                        console.error("Task not found for AI update:", taskId);
-                        setAppError("Could not apply AI suggestion: Task not found.");
-                        return;
-                      }
-                      const aiNote = {
-                        text: `AI Suggestion: Progress ${suggestion.progress ?? 'N/A'}%, Status ${suggestion.status ?? 'N/A'}. Note: ${suggestion.notes ?? 'N/A'}`,
-                        timestamp: new Date().toISOString(),
-                        source: 'ai'
-                      };
-                      const updatePayload = { notes: [...(t.notes || []), aiNote] };
-                      if (suggestion.progress != null) updatePayload.progress = suggestion.progress;
-                      if (suggestion.status) updatePayload.status = suggestion.status;
-                      handleUpdateTask(taskId, updatePayload);
-                      setShowAIModal(false);
-                      setSuccessMessage("AI suggestions applied and note added.");
+                      const t = findTaskByIdRecursively(tasks, taskId);
+                      if (!t) return;
+                      const aiNote = { text: suggestion.notes, timestamp: new Date().toISOString(), source: 'ai' };
+                      handleUpdateTask(taskId, { notes: [...(t.notes || []), aiNote], progress: suggestion.progress, status: suggestion.status });
+                      setNotification({ message: "AI suggestions applied.", type: "success" });
                     },
                     setAppError: setAppError
-                }));
-            }
-            if (showNotesModal && selectedTask) {
-                mainReturnChildren.push(React.createElement(NotesModal, {
-                        key: "notes-modal",
-                        task: selectedTask,
-                        loggedInUserType: loggedInUserType,
-                        onClose: () => setShowNotesModal(false),
-                        onAddNote: (taskId, noteText) => {
-                                const t = tasks.find(t => t.id === taskId);
-                                if (!t) {
-                                    console.error("Task not found for adding note:", taskId);
-                                    setAppError("Could not add note: Task not found.");
-                                    return;
-                                }
-                                const newNote = {
-                                    text: noteText,
-                                    timestamp: new Date().toISOString(),
-                                    source: 'manual'
-                                };
-                                handleUpdateTask(taskId, {
-                                    notes: [...(t.notes || []), newNote]
-                                });
-                                setSuccessMessage("Note added successfully.");
-                            }
-                        }));
-                }            
-            if (showClientCommModal && selectedTask) { mainReturnChildren.push(React.createElement(ClientCommunicationModal, { key: "client-comm-modal", task: selectedTask, loggedInUserType: loggedInUserType, onClose: () => setShowClientCommModal(false), onAdminAddComment: handleAddClientComment, onClientRespond: handleClientCommentResponse })); }
-            
-            if(loggedInUserType) {
-                 mainReturnChildren.push(React.createElement(Chatbot, { key: "chatbot", projectTasks: tasks }));
-            }
+                }),
+                showNotesModal && selectedTask && React.createElement(NotesModal, {
+                    key: "notes-modal", task: selectedTask, loggedInUserType: loggedInUser.userType, onClose: () => setShowNotesModal(false),
+                    onAddNote: (taskId, noteText) => {
+                        const t = findTaskByIdRecursively(tasks, taskId); 
+                        if (!t) return;
+                        const newNote = { text: noteText, timestamp: new Date().toISOString(), source: 'manual' };
+                        handleUpdateTask(taskId, { notes: [...(t.notes || []), newNote] });
+                        setNotification({ message: "Note added successfully.", type: "success" });
+                    }
+                }),
+                showClientCommModal && selectedTask && React.createElement(ClientCommunicationModal, {
+                    key: "client-comm-modal", task: selectedTask, loggedInUserType: loggedInUser.userType, onClose: () => setShowClientCommModal(false),
+                    onAdminAddComment: (taskId, commentText) => {
+                        const task = findTaskByIdRecursively(tasks, taskId); 
+                        if (!task) return;
+                        const newComment = { id: generateUUID(), adminComment: commentText, adminTimestamp: new Date().toISOString() };
+                        handleUpdateTask(taskId, { clientComments: [...(task.clientComments || []), newComment] });
+                    },
+                    onClientRespond: (taskId, commentId, status, clientComment) => {
+                        const task = findTaskByIdRecursively(tasks, taskId); 
+                        if (!task) return;
+                        const updatedComments = task.clientComments.map(c => c.id === commentId ? { ...c, clientStatus: status, clientResponseTimestamp: new Date().toISOString(), clientComment: clientComment } : c);
+                        handleUpdateTask(taskId, { clientComments: updatedComments });
+                    }
+                }),
+                
+                // Chatbot
+                React.createElement(Chatbot, { key: "chatbot", projectTasks: tasks, projectName: selectedProject })
+            );
 
-            return React.createElement("div", { className: "min-h-screen bg-slate-100 p-2 sm:p-4 md:p-8 font-sans" }, ...mainReturnChildren);
+            return mainContent;
+        };
+
+        // --- AddProjectModal Component ---
+        const AddProjectModal = ({ onClose, onAdd }) => {
+            const { useState, useRef, useEffect } = React;
+            const [projectName, setProjectName] = useState('');
+            const [accessCode, setAccessCode] = useState('');
+            const modalContentRef = useRef(null);
+
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (modalContentRef.current && !modalContentRef.current.contains(event.target)) {
+                        onClose();
+                    }
+                };
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => document.removeEventListener("mousedown", handleClickOutside);
+            }, [onClose]);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (projectName.trim() && accessCode.trim()) {
+                    onAdd(projectName.trim(), accessCode.trim());
+                }
+            };
+            
+            return React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50" },
+                React.createElement("div", { ref: modalContentRef, className: "modal-content p-6 rounded-xl shadow-2xl w-full max-w-md" },
+                    React.createElement("h2", { className: "text-xl font-semibold mb-4 text-green-600" }, "Add New Project"),
+                    React.createElement("form", { onSubmit: handleSubmit, className: "space-y-4" },
+                        React.createElement("div", null,
+                            React.createElement("label", { htmlFor: "projectName", className: "modal-label block text-sm font-medium mb-1" }, "Project Name"),
+                            React.createElement("input", { type: "text", id: "projectName", value: projectName, onChange: e => setProjectName(e.target.value), required: true, className: "w-full p-2 modal-input rounded-md" })
+                        ),
+                        React.createElement("div", null,
+                            React.createElement("label", { htmlFor: "accessCode", className: "modal-label block text-sm font-medium mb-1" }, "Client Access Code"),
+                            React.createElement("input", { type: "text", id: "accessCode", value: accessCode, onChange: e => setAccessCode(e.target.value), required: true, className: "w-full p-2 modal-input rounded-md" })
+                        ),
+                        React.createElement("div", { className: "flex justify-end space-x-3 pt-4" },
+                            React.createElement("button", { type: "button", onClick: onClose, className: "px-4 py-2 rounded-md bg-slate-200 hover:bg-slate-300 text-slate-700" }, "Cancel"),
+                            React.createElement("button", { type: "submit", className: "px-4 py-2 rounded-md bg-green-600 hover:bg-green-700 text-white font-semibold" }, "Add Project")
+                        )
+                    )
+                )
+            );
+        };
+
+        // --- NEW AddTaskModal Component ---
+        const AddTaskModal = ({ onClose, onAdd }) => {
+            const { useState, useRef, useEffect } = React;
+            const [taskName, setTaskName] = useState('');
+            const [plannedStartDate, setPlannedStartDate] = useState('');
+            const [plannedEndDate, setPlannedEndDate] = useState('');
+            const modalContentRef = useRef(null);
+
+            useEffect(() => {
+                const handleClickOutside = (event) => {
+                    if (modalContentRef.current && !modalContentRef.current.contains(event.target)) {
+                        onClose();
+                    }
+                };
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => document.removeEventListener("mousedown", handleClickOutside);
+            }, [onClose]);
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!taskName.trim()) {
+                    alert("Task Name is required.");
+                    return;
+                }
+                if (window.confirm("Are you sure you want to add new Task?")) {
+                    onAdd({ taskName, plannedStartDate, plannedEndDate });
+                }
+            };
+            
+            return React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50" },
+                React.createElement("div", { ref: modalContentRef, className: "modal-content p-6 rounded-xl shadow-2xl w-full max-w-md" },
+                    React.createElement("h2", { className: "text-xl font-semibold mb-4 text-blue-600" }, "Add New Task"),
+                    React.createElement("form", { onSubmit: handleSubmit, className: "space-y-4" },
+                        React.createElement("div", null,
+                            React.createElement("label", { htmlFor: "taskName", className: "modal-label block text-sm font-medium mb-1" }, "Task Name"),
+                            React.createElement("input", { type: "text", id: "taskName", value: taskName, onChange: e => setTaskName(e.target.value), required: true, className: "w-full p-2 modal-input rounded-md" })
+                        ),
+                        React.createElement("div", null,
+                            React.createElement("label", { htmlFor: "plannedStartDate", className: "modal-label block text-sm font-medium mb-1" }, "Planned Start Date"),
+                            React.createElement("input", { type: "date", id: "plannedStartDate", value: plannedStartDate, onChange: e => setPlannedStartDate(e.target.value), className: "w-full p-2 modal-input rounded-md" })
+                        ),
+                         React.createElement("div", null,
+                            React.createElement("label", { htmlFor: "plannedEndDate", className: "modal-label block text-sm font-medium mb-1" }, "Planned End Date"),
+                            React.createElement("input", { type: "date", id: "plannedEndDate", value: plannedEndDate, onChange: e => setPlannedEndDate(e.target.value), className: "w-full p-2 modal-input rounded-md" })
+                        ),
+                        React.createElement("div", { className: "flex justify-end space-x-3 pt-4" },
+                            React.createElement("button", { type: "button", onClick: onClose, className: "px-4 py-2 rounded-md bg-slate-200 hover:bg-slate-300 text-slate-700" }, "Cancel"),
+                            React.createElement("button", { type: "submit", className: "px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-semibold" }, "Add Task")
+                        )
+                    )
+                )
+            );
         };
 
         // --- LoginForm Component ---
-        const LoginForm = ({ onAdminLogin, onClientLogin, loginError, setLoginError, loginAttemptType, setLoginAttemptType, onLogoUpload, currentLogo }) => {
-            const { useState } = React; const [username, setUsername] = useState(''); const [password, setPassword] = useState(''); const [projectNumber, setProjectNumber] = useState('');
-            const handleSubmit = (e) => { e.preventDefault(); if (setLoginError) setLoginError(''); if (loginAttemptType === 'admin') { onAdminLogin(username, password); } else { onClientLogin(projectNumber); } };
+        const LoginForm = ({ onLogin, setNotification, setAppError }) => {
+            const { useState } = React;
+            const [formView, setFormView] = useState('login'); // 'login' or 'signup'
+            const [loginType, setLoginType] = useState('admin'); // 'admin' or 'client'
+            
+            const [adminEmail, setAdminEmail] = useState('');
+            const [adminPassword, setAdminPassword] = useState('');
+            const [clientAccessCode, setClientAccessCode] = useState('');
+            const [signupEmail, setSignupEmail] = useState('');
+            const [signupPassword, setSignupPassword] = useState('');
+
+            const handleApiResponse = async (response) => {
+                const data = await response.json();
+                if(response.ok) {
+                    if (formView === 'signup') {
+                        setNotification({ message: data.message, type: 'info' });
+                        setFormView('login');
+                        setSignupEmail('');
+                        setSignupPassword('');
+                    } else {
+                        onLogin(data);
+                    }
+                } else {
+                    setAppError(data.message || 'An unknown error occurred.');
+                }
+            };
+            
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                setAppError(null);
+                
+                let endpoint, body;
+                if(formView === 'login') {
+                    endpoint = '/api/login';
+                    body = loginType === 'admin'
+                        ? { type: 'admin', email: adminEmail, password: adminPassword }
+                        : { type: 'client', access_code: clientAccessCode };
+                } else { // signup
+                    endpoint = '/api/signup';
+                    body = { email: signupEmail, password: signupPassword };
+                }
+
+                fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                }).then(handleApiResponse).catch(err => setAppError(err.message));
+            };
+
+            const renderLoginForm = () => (
+                 React.createElement("div", null,
+                    React.createElement("div", { className: "mb-6 flex border-b border-slate-300" }, 
+                        React.createElement("button", { type: "button", onClick: () => setLoginType('admin'), className: `flex-1 py-3 text-center font-semibold text-sm sm:text-base cursor-pointer transition-colors ${loginType === 'admin' ? 'text-sky-600 border-b-2 border-sky-600' : 'text-slate-500 hover:text-slate-700'}` }, "Admin Login"), 
+                        React.createElement("button", { type: "button", onClick: () => setLoginType('client'), className: `flex-1 py-3 text-center font-semibold text-sm sm:text-base cursor-pointer transition-colors ${loginType === 'client' ? 'text-teal-600 border-b-2 border-teal-600' : 'text-slate-500 hover:text-slate-700'}` }, "Client Login")
+                    ),
+                    loginType === 'admin' ? 
+                        React.createElement(React.Fragment, null,
+                            React.createElement("div", null, React.createElement("label", { htmlFor: "username", className: "block text-sm font-medium text-slate-700 mb-1" }, "Email"), React.createElement("div", { className: "relative" }, React.createElement("div", { className: "absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" }, React.createElement(UserIcon, { size: 16, className: "text-slate-400" })), React.createElement("input", { type: "email", id: "username", value: adminEmail, onChange: (e) => setAdminEmail(e.target.value), required: true, className: "w-full pl-10 p-3 modal-input rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500", placeholder: "admin@example.com" }))),
+                            React.createElement("div", null, React.createElement("label", { htmlFor: "password", className: "block text-sm font-medium text-slate-700 mb-1" }, "Password"), React.createElement("div", { className: "relative" }, React.createElement("div", { className: "absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" }, React.createElement(LockIcon, { size: 16, className: "text-slate-400" })), React.createElement("input", { type: "password", id: "password", value: adminPassword, onChange: (e) => setAdminPassword(e.target.value), required: true, className: "w-full pl-10 p-3 modal-input rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500", placeholder: "••••••••" })))
+                        ) : 
+                        React.createElement("div", null, React.createElement("label", { htmlFor: "projectNumber", className: "block text-sm font-medium text-slate-700 mb-1" }, "Client Access Code"), React.createElement("div", { className: "relative" }, React.createElement("div", { className: "absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" }, React.createElement(ProjectIcon, { size: 16, className: "text-slate-400" })), React.createElement("input", { type: "text", id: "projectNumber", value: clientAccessCode, onChange: (e) => setClientAccessCode(e.target.value), required: true, className: "w-full pl-10 p-3 modal-input rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500", placeholder: "Enter your project code" })))
+                )
+            );
+
+            const renderSignupForm = () => (
+                React.createElement(React.Fragment, null,
+                    React.createElement("h2", {className: "text-center text-xl font-bold text-slate-800 mb-4"}, "Create Admin Account"),
+                    React.createElement("div", null, React.createElement("label", { htmlFor: "signup-email", className: "block text-sm font-medium text-slate-700 mb-1" }, "Email Address"), React.createElement("div", { className: "relative" }, React.createElement("div", { className: "absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" }, React.createElement(MailIcon, { size: 16, className: "text-slate-400" })), React.createElement("input", { type: "email", id: "signup-email", value: signupEmail, onChange: (e) => setSignupEmail(e.target.value), required: true, className: "w-full pl-10 p-3 modal-input rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500", placeholder: "you@company.com" }))),
+                    React.createElement("div", null, React.createElement("label", { htmlFor: "signup-password", className: "block text-sm font-medium text-slate-700 mb-1" }, "Password"), React.createElement("div", { className: "relative" }, React.createElement("div", { className: "absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" }, React.createElement(LockIcon, { size: 16, className: "text-slate-400" })), React.createElement("input", { type: "password", id: "signup-password", value: signupPassword, onChange: (e) => setSignupPassword(e.target.value), required: true, className: "w-full pl-10 p-3 modal-input rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500", placeholder: "Choose a strong password" })))
+                )
+            );
+
             return (
-                React.createElement("div", { className: "min-h-screen flex flex-col items-center justify-between bg-slate-100 p-4" },
-                    React.createElement("div", { className: "flex flex-col sm:flex-row items-center mb-8 space-y-4 sm:space-y-0 sm:space-x-3 text-center" }, 
-                        currentLogo ? React.createElement("img", { src: currentLogo, alt: "App Logo", className: "h-12 w-auto" }) : React.createElement(AppIconPlaceholder, { className: "text-sky-600 h-12 w-12 text-2xl bg-white shadow-md" }),
-                        React.createElement("div", null, 
-                           React.createElement("h1", { className: "text-2xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-600 to-blue-700" }, APP_TITLE),
-                           React.createElement("h2", { className: "text-sm sm:text-base text-slate-500" }, APP_SUBTITLE)
-                        ),
-                        React.createElement("label", { htmlFor: "loginLogoUpload", className: "text-xs px-2 py-1 bg-slate-200 text-slate-600 hover:bg-slate-300 rounded-md cursor-pointer flex items-center" }, React.createElement(UploadIcon, { size: 14, className: "mr-1" }), "Upload Logo"), React.createElement("input", { type: "file", id: "loginLogoUpload", accept: "image/*", className: "hidden", onChange: onLogoUpload })
+                React.createElement("div", { className: "min-h-screen flex flex-col items-center justify-center bg-slate-100 p-4" },
+                    React.createElement("div", { className: "text-center mb-8" }, 
+                        React.createElement("img", { src: 'static/logo.png', alt: "App Logo", className: "h-12 w-auto mx-auto mb-4" }),
+                        React.createElement("h1", { className: "text-2xl sm:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-600 to-blue-700" }, APP_TITLE),
+                        React.createElement("h2", { className: "text-sm sm:text-base text-slate-500" }, "Project Response & Operations Tracker via Optimized Network")
                     ),
                     React.createElement("div", { className: "w-full max-w-sm sm:max-w-md bg-white p-6 sm:p-8 rounded-xl shadow-2xl" },
-                        React.createElement("div", { className: "mb-6 flex border-b border-slate-300" }, React.createElement("button", { onClick: () => setLoginAttemptType('admin'), className: `flex-1 py-3 text-center font-semibold text-sm sm:text-base ${loginAttemptType === 'admin' ? 'text-sky-600 border-b-2 border-sky-600' : 'text-slate-500 hover:text-slate-700'}` }, "Admin Login"), React.createElement("button", { onClick: () => setLoginAttemptType('client'), className: `flex-1 py-3 text-center font-semibold text-sm sm:text-base ${loginAttemptType === 'client' ? 'text-teal-600 border-b-2 border-teal-600' : 'text-slate-500 hover:text-slate-700'}` }, "Client Login")),
                         React.createElement("form", { onSubmit: handleSubmit, className: "space-y-6" },
-                            loginAttemptType === 'admin' && React.createElement(React.Fragment, null, React.createElement("div", null, React.createElement("label", { htmlFor: "username", className: "block text-sm font-medium text-slate-700 mb-1" }, "Username"), React.createElement("div", { className: "relative" }, React.createElement("div", { className: "absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" }, React.createElement(UserIcon, { size: 16, className: "text-slate-400" })), React.createElement("input", { type: "text", id: "username", value: username, onChange: (e) => setUsername(e.target.value), required: true, className: "w-full pl-10 p-3 modal-input rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500", placeholder: "admin" }))), React.createElement("div", null, React.createElement("label", { htmlFor: "password", className: "block text-sm font-medium text-slate-700 mb-1" }, "Password"), React.createElement("div", { className: "relative" }, React.createElement("div", { className: "absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" }, React.createElement(LockIcon, { size: 16, className: "text-slate-400" })), React.createElement("input", { type: "password", id: "password", value: password, onChange: (e) => setPassword(e.target.value), required: true, className: "w-full pl-10 p-3 modal-input rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500", placeholder: "password123" })))),
-                            loginAttemptType === 'client' && React.createElement("div", null, React.createElement("label", { htmlFor: "projectNumber", className: "block text-sm font-medium text-slate-700 mb-1" }, "Project Number"), React.createElement("div", { className: "relative" }, React.createElement("div", { className: "absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none" }, React.createElement(ProjectIcon, { size: 16, className: "text-slate-400" })), React.createElement("input", { type: "text", id: "projectNumber", value: projectNumber, onChange: (e) => setProjectNumber(e.target.value), required: true, className: "w-full pl-10 p-3 modal-input rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500", placeholder: "PROJ789" }))),
-                            loginError && React.createElement("p", { className: "text-sm text-red-600 text-center" }, loginError),
-                            React.createElement("button", { type: "submit", className: `w-full py-3 px-4 font-semibold text-white rounded-lg transition-colors duration-300 ${loginAttemptType === 'admin' ? 'bg-sky-600 hover:bg-sky-700 focus:ring-sky-500' : 'bg-teal-600 hover:bg-teal-700 focus:ring-teal-500'} focus:outline-none focus:ring-2  focus:ring-offset-2` }, "Login")
+                            formView === 'login' ? renderLoginForm() : renderSignupForm(),
+                            React.createElement("button", { 
+                                type: "submit", 
+                                className: `w-full py-3 px-4 font-semibold text-white rounded-lg transition-colors duration-300 ${formView === 'login' ? (loginType === 'admin' ? 'bg-sky-600 hover:bg-sky-700' : 'bg-teal-600 hover:bg-teal-700') : 'bg-purple-600 hover:bg-purple-700'} focus:outline-none focus:ring-2 focus:ring-offset-2` 
+                            }, formView === 'login' ? 'Login' : 'Sign Up'),
+                            formView === 'login' ?
+                                React.createElement("p", { className: "text-center mt-4 text-sm text-slate-600" }, 
+                                    "Don't have an admin account? ",
+                                    React.createElement("button", {
+                                        type: 'button',
+                                        onClick: () => setFormView('signup'),
+                                        className: "font-medium text-sky-600 hover:text-sky-500"
+                                    }, "Sign Up >")
+                                ) :
+                                React.createElement("p", { className: "text-center mt-4 text-sm text-slate-600" }, 
+                                    "Already have an account? ",
+                                    React.createElement("button", {
+                                        type: 'button',
+                                        onClick: () => setFormView('login'),
+                                        className: "font-medium text-sky-600 hover:text-sky-500"
+                                    }, "Log In")
+                                )
                         )
                     ),
-                    React.createElement("p", { className: "mt-8 text-xs text-slate-500 text-center px-4" }, "Note: Admin (admin/password123), Client Project (PROJ789). This login is for demonstration only.")
+                    React.createElement("p", { className: "mt-8 text-xs text-slate-500 text-center px-4" }, "This application is for demonstration purposes. Contact your administrator for access.")
                 )
             );
         };
-
+        
         // --- TaskTable Component ---
-        const TaskTable = ({ tasks, viewType, loggedInUserType, onUpdateTask, onEditTask, onAIUpdate, onShowNotes, onClientComm, onToggleClientDeliverable, onToggleExpansion, sortBy, onSort }) => {
+        const TaskTable = ({ tasks, viewType, loggedInUserType, sortBy, onSort, ...props }) => {
+            const { useMemo } = React; 
+
             const SortIcon = ({ field }) => { if (sortBy.field !== field) return React.createElement(ChevronDown, { className: "inline ml-1 h-4 w-4 opacity-30 text-slate-400" }); return sortBy.order === 'asc' ? React.createElement(ChevronUp, { className: "inline ml-1 h-4 w-4 text-sky-600" }) : React.createElement(ChevronDown, { className: "inline ml-1 h-4 w-4 text-sky-600" }); };
             const commonHeaders = [{ key: 'wbs', label: 'WBS' }, { key: 'taskName', label: 'Task Name / Deliverable' }, { key: 'plannedStartDate', label: 'Planned Start' }, { key: 'plannedEndDate', label: 'Planned End' }, { key: 'status', label: 'Status' }, { key: 'progress', label: 'Progress' },];
-            let headers = (loggedInUserType === 'admin' && viewType === 'admin') ? [...commonHeaders, { key: 'actualStartDate', label: 'Actual Start' }, { key: 'actualEndDate', label: 'Actual End' }, { key: 'isCritical', label: 'Critical?' }, { key: 'delayWeatherDays', label: 'Weather Delay' }, { key: 'delayContractorDays', label: 'Ctr. Delay' }, { key: 'delayClientDays', label: 'Client Delay' }, { key: 'isClientDeliverable', label: 'Client View?' }, { key: 'clientComm', label: 'Client Comm.' }, { key: 'actions', label: 'Actions' }] : [...commonHeaders, { key: 'clientComm', label: 'Actions' }];
+            let headers = (loggedInUserType !== 'client' && viewType === 'admin') ? [...commonHeaders, { key: 'actualStartDate', label: 'Actual Start' }, { key: 'actualEndDate', label: 'Actual End' }, { key: 'isCritical', label: 'Critical?' }, { key: 'delayWeatherDays', label: 'Weather Delay' }, { key: 'delayContractorDays', label: 'Ctr. Delay' }, { key: 'delayClientDays', label: 'Client Delay' }, { key: 'isClientDeliverable', label: 'Client View?' }, { key: 'clientComm', label: 'Client Comm.' }, { key: 'actions', label: 'Actions' }] : [...commonHeaders, { key: 'clientComm', label: 'Actions' }];
             const nonSortableHeaderKeys = ['actions', 'isClientDeliverable', 'isCritical', 'clientComm', 'delayWeatherDays', 'delayContractorDays', 'delayClientDays'];
             
+            const areAllSelected = useMemo(() => {
+                let allDeliverables = true;
+                const checkTasks = (taskList) => {
+                    if (!taskList) return;
+                    for (const task of taskList) {
+                        if (!task.isClientDeliverable) {
+                            allDeliverables = false;
+                            return;
+                        }
+                        if (task.subtasks) checkTasks(task.subtasks);
+                    }
+                };
+                checkTasks(tasks);
+                return tasks.length > 0 && allDeliverables;
+            }, [tasks]);
+
             return (React.createElement("div", { className: "overflow-x-auto bg-white shadow-xl rounded-xl" }, 
                 React.createElement("table", { className: "min-w-full divide-y divide-slate-200" }, 
                     React.createElement("thead", { className: "bg-slate-50" }, 
@@ -1484,47 +1707,102 @@
                                 scope: "col", 
                                 className: "px-4 py-3.5 text-left text-sm font-semibold text-slate-700 cursor-pointer hover:bg-slate-100", 
                                 onClick: () => !nonSortableHeaderKeys.includes(header.key) && onSort(header.key) 
-                            }, header.label, !nonSortableHeaderKeys.includes(header.key) && React.createElement(SortIcon, { field: header.key }))
+                            }, 
+                            header.key === 'isClientDeliverable' && viewType === 'admin' &&
+                                React.createElement("div", { className: "flex items-center" },
+                                    React.createElement("input", {
+                                        type: "checkbox",
+                                        className: "h-4 w-4 rounded text-sky-600 border-slate-300 focus:ring-sky-500 mr-2",
+                                        checked: areAllSelected,
+                                        onChange: () => props.onToggleAllClientDeliverables(!areAllSelected),
+                                        title: areAllSelected ? "Deselect All" : "Select All"
+                                    }),
+                                    header.label
+                                ),
+                            header.key !== 'isClientDeliverable' && header.label,
+                            !nonSortableHeaderKeys.includes(header.key) && React.createElement(SortIcon, { field: header.key }))
                         )))
                     ), 
                     React.createElement("tbody", { className: "divide-y divide-slate-200 bg-white" }, tasks.map(task => (
-                        React.createElement(TaskRow, { key: task.id, task: task, viewType: viewType, loggedInUserType: loggedInUserType, onUpdateTask: onUpdateTask, onEditTask: onEditTask, onAIUpdate: onAIUpdate, onShowNotes: onShowNotes, onClientComm: onClientComm, onToggleClientDeliverable: onToggleClientDeliverable, onToggleExpansion: onToggleExpansion })
+                        React.createElement(TaskRow, { 
+                            key: task.id, 
+                            task: task, 
+                            viewType: viewType,
+                            loggedInUserType: loggedInUserType,
+                            level: 0,
+                            ...props
+                        })
                     )))
                 )
             ));
         };
-
-        // --- TaskRow Component ---
-        const TaskRow = ({ task, viewType, loggedInUserType, onUpdateTask, onEditTask, onAIUpdate, onShowNotes, onClientComm, onToggleClientDeliverable, onToggleExpansion }) => {
+        
+        // --- Recursive TaskRow Component ---
+        const TaskRow = ({ task, viewType, loggedInUserType, onUpdateTask, onEditTask, onAIUpdate, onShowNotes, onShowDetails, onClientComm, onToggleClientDeliverable, onToggleExpansion, onAddTask, onDeleteTask, level }) => {
             const renderStatusPill = (status) => { const baseClasses = "px-2 py-1 text-xs font-semibold rounded-full"; const colorClasses = { 'Not Started': 'bg-slate-200 text-slate-700', 'In Progress': 'bg-blue-100 text-blue-700', 'Completed': 'bg-green-100 text-green-700', 'Delayed': 'bg-red-100 text-red-700', 'On Hold': 'bg-yellow-100 text-yellow-700', 'Ahead of Schedule': 'bg-sky-100 text-sky-700' }; return React.createElement("span", { className: `${baseClasses} ${colorClasses[status] || 'bg-slate-200 text-slate-700'}` }, status || 'Not Started'); };
-            const handleCriticalToggle = () => { if (loggedInUserType === 'admin') { onUpdateTask(task.id, { isCritical: !task.isCritical }); } };
+            const handleCriticalToggle = () => { if (loggedInUserType !== 'client') { onUpdateTask(task.id, { isCritical: !task.isCritical }); } };
             const latestClientComment = task.clientComments && task.clientComments.length > 0 ? task.clientComments[task.clientComments.length - 1] : null;
-            const clientCommentStatusIndicator = latestClientComment && latestClientComment.clientStatus ? `(${latestClientComment.clientStatus.substring(0, 5)}..)` : (latestClientComment ? '(Pending)' : '');
+            const isPendingForClient = latestClientComment && !latestClientComment.clientStatus;
+            
+            const hasSubtasks = task.subtasks && task.subtasks.length > 0;
+            const indentStyle = { paddingLeft: `${1 + (level * 1.5)}rem` };
+
             let actionButtons = [];
-            if (loggedInUserType === 'admin' && viewType === 'admin') {
+            if (loggedInUserType !== 'client' && viewType === 'admin') {
                 actionButtons = [
+                    React.createElement("button", { key: "add", onClick: () => onAddTask(task), className: "text-green-500 hover:text-green-600", title: "Add Task Below" }, React.createElement(PlusCircle, { size: 18 })),
                     React.createElement("button", { key: "edit", onClick: () => onEditTask(task), className: "text-yellow-500 hover:text-yellow-600", title: "Edit Task" }, React.createElement(Edit3, { size: 18 })),
                     React.createElement("button", { key: "ai", onClick: () => onAIUpdate(task), className: "text-purple-500 hover:text-purple-600", title: "AI Update & Risk Assessment" }, React.createElement(Zap, { size: 18 })),
-                    React.createElement("button", { key: "notes", onClick: () => onShowNotes(task), className: "text-green-500 hover:text-green-600", title: "View/Add Notes" }, React.createElement(MessageSquareIcon, { size: 18 }))
+                    React.createElement("button", { key: "notes", onClick: () => onShowNotes(task), className: "text-blue-500 hover:text-blue-600", title: "View/Add Notes" }, React.createElement(MessageSquareIcon, { size: 18 })),
+                    React.createElement("button", { key: "delete", onClick: () => onDeleteTask(task.id), className: "text-red-500 hover:text-red-600", title: "Delete Task" }, React.createElement(Trash2, { size: 18 }))
                 ];
             }
+            
+            // Determine if task is delayed
+            const isDelayed = task.status === 'Delayed' || (task.delayWeatherDays || 0) > 0 || (task.delayContractorDays || 0) > 0 || (task.delayClientDays || 0) > 0;
+
+            // Build base classes
+            const rowClasses = ['transition-colors', 'duration-150'];
+            if (hasSubtasks) {
+                rowClasses.push('font-bold');
+            }
+            if (task.isCritical && viewType === 'admin') {
+                rowClasses.push('ring-1', 'ring-red-400');
+            }
+
+            // Apply background/hover styles based on state
+            if (isDelayed) {
+                rowClasses.push('delayed-task-row');
+            } else {
+                rowClasses.push('hover:bg-slate-50');
+                if (hasSubtasks) {
+                    rowClasses.push('bg-slate-50'); // Only apply default parent bg if not delayed
+                }
+            }
+
+
             return (
                 React.createElement(React.Fragment, null,
-                    React.createElement("tr", { className: `hover:bg-slate-50 transition-colors duration-150 ${task.isExpanded ? 'bg-slate-100' : ''} ${task.isCritical && viewType === 'admin' ? 'ring-1 ring-red-400' : ''}` },
-                        React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 whitespace-nowrap" }, task.wbs),
-                        React.createElement("td", { className: "px-4 py-3 text-sm font-medium text-slate-800" }, 
+                    React.createElement("tr", { className: rowClasses.join(' ') },
+                        React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 whitespace-nowrap" }, 
+                            React.createElement("span", { style: indentStyle }, task.wbs)
+                        ),
+                        React.createElement("td", { className: `px-4 py-3 text-sm ${hasSubtasks ? 'text-slate-900' : 'text-slate-800'}` }, 
+                            hasSubtasks && (
+                                React.createElement("button", { 
+                                    onClick: () => onToggleExpansion(task.id), 
+                                    className: "mr-1 text-xs text-sky-600 hover:text-sky-700 align-middle" 
+                                }, task.isExpanded ? React.createElement(ChevronUp, { size: 16, className: "inline" }) : React.createElement(ChevronDown, { size: 16, className: "inline" }))
+                            ),
                             task.isCritical && viewType === 'admin' && React.createElement(AlertTriangle, { size: 14, className: "inline mr-1 text-red-500" }), 
-                            task.taskName, 
-                            ((viewType === 'admin' && loggedInUserType === 'admin') || viewType === 'client') && 
-                                (React.createElement("button", { onClick: () => onToggleExpansion(task.id), className: "ml-2 text-xs text-sky-600 hover:text-sky-700" }, 
-                                    task.isExpanded ? React.createElement(ChevronUp, { size: 16, className: "inline" }) : React.createElement(ChevronDown, { size: 16, className: "inline" }), " Details"
-                                ))
+                            React.createElement("span", null, task.taskName),
+                            React.createElement("button", { onClick: () => onShowDetails(task), className: "ml-2 text-slate-400 hover:text-blue-500 align-middle", title: "View Details"}, React.createElement(InfoIcon, { size: 14}))
                         ),
                         React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 whitespace-nowrap" }, formatDateForDisplay(task.plannedStartDate)),
                         React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 whitespace-nowrap" }, formatDateForDisplay(task.plannedEndDate)),
                         React.createElement("td", { className: "px-4 py-3 text-sm whitespace-nowrap" }, renderStatusPill(task.status)),
                         React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 whitespace-nowrap" }, React.createElement("div", { className: "w-full bg-slate-200 rounded-full h-2.5" }, React.createElement("div", { className: "bg-blue-500 h-2.5 rounded-full", style: { width: `${task.progress || 0}%` } })), React.createElement("span", { className: "text-xs ml-1" }, task.progress || 0, "%")),
-                        loggedInUserType === 'admin' && viewType === 'admin' && (React.createElement(React.Fragment, null,
+                        loggedInUserType !== 'client' && viewType === 'admin' && (React.createElement(React.Fragment, null,
                             React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 whitespace-nowrap" }, formatDateForDisplay(task.actualStartDate)),
                             React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 whitespace-nowrap" }, formatDateForDisplay(task.actualEndDate)),
                             React.createElement("td", { className: "px-4 py-3 text-sm text-center cursor-pointer hover:bg-slate-100", onClick: handleCriticalToggle, title: "Toggle Critical Status" }, task.isCritical ? React.createElement(CheckCircle, { size: 18, className: "text-red-500" }) : React.createElement("span", { className: "text-slate-400" }, "-")),
@@ -1532,50 +1810,30 @@
                             React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 text-center" }, task.delayContractorDays || 0),
                             React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 text-center" }, task.delayClientDays || 0),
                             React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600" }, React.createElement("input", { type: "checkbox", className: "h-5 w-5 rounded text-sky-600 border-slate-300 focus:ring-sky-500 cursor-pointer", checked: !!task.isClientDeliverable, onChange: (e) => onToggleClientDeliverable(task, e.target.checked) })),
-                            React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600" }, React.createElement("button", { onClick: () => onClientComm(task), className: "text-blue-500 hover:text-blue-600 text-xs p-1 rounded hover:bg-blue-50 flex items-center" }, React.createElement(MessageSquareIcon, { size: 16, className: "mr-1" }), "Comm ", React.createElement("span", { className: "text-xs text-gray-500 ml-1" }, clientCommentStatusIndicator))),
+                            React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600" }, React.createElement("button", { onClick: () => onClientComm(task), className: "text-blue-500 hover:text-blue-600 text-xs p-1 rounded hover:bg-blue-50 flex items-center" }, React.createElement(MessageSquareIcon, { size: 16, className: "mr-1" }), "Comm ")),
                             React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 whitespace-nowrap space-x-2" }, ...actionButtons)
                         )),
-                        loggedInUserType === 'client' && viewType === 'client' && (
+                        (loggedInUserType === 'client' || viewType === 'client') && (
                             React.createElement("td", { className: "px-4 py-3 text-sm text-slate-600 whitespace-nowrap" },
                                 React.createElement("div", { className: "flex items-center space-x-2" },
-                                    React.createElement("button", {
-                                        onClick: () => onClientComm(task),
-                                        className: "text-blue-500 hover:text-blue-600",
-                                        title: `View Comments ${clientCommentStatusIndicator}`
-                                    }, React.createElement(MessageSquareIcon, { size: 18 })),
-                                    React.createElement("button", {
-                                        onClick: () => onAIUpdate(task),
-                                        className: "text-purple-500 hover:text-purple-600",
-                                        title: "AI Suggestions"
-                                    }, React.createElement(Zap, { size: 18 }))
+                                    React.createElement("button", { onClick: () => onClientComm(task), className: "relative text-blue-500 hover:text-blue-600", title: "View Comments" }, 
+                                      React.createElement(MessageSquareIcon, { size: 18 }),
+                                      isPendingForClient && React.createElement("span", { className: "absolute -top-1 -right-1 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" })
+                                    ),
+                                    React.createElement("button", { onClick: () => onAIUpdate(task), className: "text-purple-500 hover:text-purple-600", title: "AI Suggestions" }, React.createElement(Zap, { size: 18 }))
                                 )
                             )
                         )
                     ),
-                    viewType === 'admin' && loggedInUserType === 'admin' && task.isExpanded &&
-                    (React.createElement("tr", { className: `bg-slate-100 ${task.isCritical ? 'ring-1 ring-red-400 ring-inset' : ''}` },
-                        React.createElement("td", { colSpan: 15, className: "p-4" },
-                            React.createElement("div", { className: "text-sm text-slate-600 grid grid-cols-1 md:grid-cols-3 gap-4" },
-                                React.createElement("div", null, React.createElement("h4", { className: "font-semibold text-slate-800 mb-1" }, "Notes:"), task.notes && task.notes.length > 0 ? (React.createElement("ul", { className: "list-disc list-inside pl-2 space-y-1 max-h-32 overflow-y-auto" }, task.notes.slice().reverse().map((note, index) => (React.createElement("li", { key: index, className: "text-xs" }, React.createElement("span", { className: "font-medium" }, new Date(note.timestamp).toLocaleString(), ": "), note.text, " (", note.source, ")"))))) : React.createElement("p", { className: "text-xs italic" }, "No notes for this task.")),
-                                React.createElement("div", null, React.createElement("h4", { className: "font-semibold text-slate-800 mb-1" }, "Predecessors:"), React.createElement("p", { className: "text-xs" }, task.predecessorString || React.createElement("em", null, "None"))),
-                                React.createElement("div", null, React.createElement("h4", { className: "font-semibold text-slate-800 mb-1" }, "Latest Client Comment Status:"), latestClientComment ? React.createElement("p", { className: "text-xs" }, latestClientComment.clientStatus ? `${latestClientComment.clientStatus} (on ${formatDateForDisplay(latestClientComment.clientResponseTimestamp)})` : "Pending Client Response") : React.createElement("em", { className: "text-xs" }, "No client comments yet."))
-                            )
-                        )
-                    )),
-                    viewType === 'client' && task.isExpanded &&
-                    (React.createElement("tr", { className: "bg-slate-100" },
-                        React.createElement("td", { colSpan: 7, className: "p-4" },
-                            React.createElement("div", { className: "text-sm text-slate-600" },
-                                React.createElement("div", null, 
-                                    React.createElement("h4", { className: "font-semibold text-slate-800 mb-1" }, "Delay Details"),
-                                    React.createElement("ul", { className: "list-none space-y-1 text-xs" },
-                                        React.createElement("li", null, "Weather Delay: ", React.createElement("strong", {className:"font-bold"}, task.delayWeatherDays || 0, " days")),
-                                        React.createElement("li", null, "Contractor Delay: ", React.createElement("strong", {className:"font-bold"}, task.delayContractorDays || 0, " days")),
-                                        React.createElement("li", null, "Client Delay: ", React.createElement("strong", {className:"font-bold"}, task.delayClientDays || 0, " days"))
-                                    )
-                                )
-                            )
-                        )
+                    task.isExpanded && hasSubtasks && task.subtasks.map(subtask => (
+                        React.createElement(TaskRow, {
+                            key: subtask.id,
+                            task: subtask,
+                            level: level + 1,
+                            onAddTask: onAddTask,
+                            onDeleteTask: onDeleteTask,
+                            viewType, loggedInUserType, onUpdateTask, onEditTask, onAIUpdate, onShowNotes, onShowDetails, onClientComm, onToggleClientDeliverable, onToggleExpansion
+                        })
                     ))
                 )
             );
@@ -1586,6 +1844,8 @@
             const { useState, useEffect, useRef } = React;
             const [formData, setFormData] = useState({ ...task });
             const modalContentRef = useRef(null);
+            
+            const hasSubtasks = task.subtasks && task.subtasks.length > 0;
 
             useEffect(() => {
                 const handleClickOutside = (event) => {
@@ -1613,7 +1873,11 @@
             return (React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm" }, 
                 React.createElement("div", { ref: modalContentRef, className: "modal-content p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto" }, 
                 React.createElement("h2", { className: "text-xl sm:text-2xl font-semibold mb-6 text-sky-600" }, "Edit Task: ", React.createElement("span", {className: "font-bold"}, task.taskName)), React.createElement("form", { onSubmit: handleSubmit, className: "space-y-4" },
-                React.createElement("div", null, React.createElement("label", { htmlFor: "progress", className: "modal-label block text-sm font-medium mb-1" }, "Progress (%)"), React.createElement("input", { type: "number", name: "progress", id: "progress", value: formData.progress || 0, onChange: handleChange, min: "0", max: "100", className: "w-full p-2 modal-input rounded-md" })),
+                React.createElement("div", null, 
+                    React.createElement("label", { htmlFor: "progress", className: "modal-label block text-sm font-medium mb-1" }, "Progress (%)"), 
+                    hasSubtasks && React.createElement("p", {className: "text-xs text-slate-500 mb-1"}, "Progress is automatically calculated from subtasks."),
+                    React.createElement("input", { type: "number", name: "progress", id: "progress", value: formData.progress || 0, onChange: handleChange, min: "0", max: "100", className: "w-full p-2 modal-input rounded-md", disabled: hasSubtasks })
+                ),
                 React.createElement("div", null, React.createElement("label", { htmlFor: "status", className: "modal-label block text-sm font-medium mb-1" }, "Status"), React.createElement("select", { name: "status", id: "status", value: formData.status, onChange: handleChange, className: "w-full p-2 modal-input rounded-md" }, TASK_STATUSES.map(s => React.createElement("option", { key: s, value: s }, s)))),
                 React.createElement("div", null, React.createElement("label", { htmlFor: "actualStartDate", className: "modal-label block text-sm font-medium mb-1" }, "Actual Start Date"), React.createElement("input", { type: "date", name: "actualStartDate", id: "actualStartDate", value: formatDateForInput(formData.actualStartDate), onChange: handleChange, className: "w-full p-2 modal-input rounded-md" })),
                 React.createElement("div", null, React.createElement("label", { htmlFor: "actualEndDate", className: "modal-label block text-sm font-medium mb-1" }, "Actual End Date"), React.createElement("input", { type: "date", name: "actualEndDate", id: "actualEndDate", value: formatDateForInput(formData.actualEndDate), onChange: handleChange, className: "w-full p-2 modal-input rounded-md" })),
@@ -1627,11 +1891,11 @@
                 React.createElement("div", { className: "flex justify-end space-x-3 pt-4" }, React.createElement("button", { type: "button", onClick: onClose, className: "px-4 py-2 rounded-md bg-slate-200 hover:bg-slate-300 text-slate-700 transition-colors" }, "Cancel"), React.createElement("button", { type: "submit", className: "px-4 py-2 rounded-md bg-sky-600 hover:bg-sky-700 text-white font-semibold transition-colors flex items-center" }, React.createElement(Save, { size: 18, className: "mr-2" }), " Save Changes"))))));
         };
 
-        const AIUpdateModal = ({ task, loggedInUserType, onClose, onApplySuggestion, setAppError }) => {
+        const AIUpdateModal = ({ task, allTasks, loggedInUserType, onClose, onApplySuggestion, setAppError }) => {
             const { useState, useEffect, useRef } = React;
             const [suggestedProgress, setSuggestedProgress] = useState(task.progress || 0);
             const [suggestedStatus, setSuggestedStatus] = useState(task.status || "Not Started");
-            const [suggestedNotes, setSuggestedNotes] = useState("");
+            const [riskMitigationPairs, setRiskMitigationPairs] = useState([]);
             const [isGeneratingRiskAssessment, setIsGeneratingRiskAssessment] = useState(false);
             const [generationError, setGenerationError] = useState(null);
             const modalContentRef = useRef(null);
@@ -1651,87 +1915,108 @@
             const handleGenerateRiskAssessment = async () => {
                 setIsGeneratingRiskAssessment(true);
                 setGenerationError(null);
+                setRiskMitigationPairs([]);
                 setAppError(null);
 
-                const prompt = `Project Task: "${task.taskName}" (WBS: ${task.wbs})
+                const allTasksSummary = allTasks.map(t => JSON.stringify({ wbs: t.wbs, name: t.taskName, status: t.status, predecessors: t.predecessorString })).join('\n');
+
+                const prompt = `
+Full Project Schedule Summary (WBS, Name, Status, Predecessors):
+${allTasksSummary}
+
+---
+Focus Task for Risk Assessment: "${task.taskName}" (WBS: ${task.wbs})
 Current Status: ${task.status}
 Current Progress: ${task.progress || 0}%
-Delays:
-- Weather Delay: ${task.delayWeatherDays || 0} days
-- Contractor Delay: ${task.delayContractorDays || 0} days
-- Client Delay: ${task.delayClientDays || 0} days
+Planned Start: ${task.plannedStartDate}
+Planned End: ${task.plannedEndDate}
+Predecessors: ${task.predecessorString || 'None'}
+Delays: Weather: ${task.delayWeatherDays || 0}d, Contractor: ${task.delayContractorDays || 0}d, Client: ${task.delayClientDays || 0}d
 
-Based on the current information for this project task, please identify potential risks associated with its status and any delays. 
-For each significant risk, suggest a concise mitigation strategy. 
-Present the output clearly, for example:
-- Risk: [Description of Risk 1]
-  - Mitigation: [Strategy for Risk 1]
-- Risk: [Description of Risk 2]
-  - Mitigation: [Strategy for Risk 2]
-Keep the entire response under 150 words.`;
+Based on the full project schedule context and the specific details of the focus task, please identify potential risks and suggest a corresponding mitigation strategy for each. Your assessment MUST consider how delays or issues in predecessor tasks impact this focus task, and how this task's status could impact its successors.
+
+Return your response ONLY as a valid JSON array of objects. Each object must have two keys: "risk" and "mitigation".
+Example format:
+[
+  {"risk": "The critical predecessor 'Task A' is delayed, which will directly delay the start of this task.", "mitigation": "Immediately follow up with the team for 'Task A' to get a revised completion date. Evaluate re-sequencing non-dependent sub-tasks to begin earlier."},
+  {"risk": "This task has a long duration and no progress, indicating a potential bottleneck.", "mitigation": "Break down the task into smaller, manageable sub-tasks with weekly check-ins to monitor progress more closely."}
+]
+Do not include any text, markdown, or formatting outside of the JSON array.
+`;
 
                 try {
                     let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
                     const payload = { contents: chatHistory };
                     const apiKey = GEMINI_API_KEY;
                     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (!response.ok) {
-                        const errorBody = await response.json();
-                        console.error("Gemini API Error:", errorBody);
-                        throw new Error(`API request failed with status ${response.status}: ${errorBody?.error?.message || 'Unknown error'}`);
-                    }
-
+                    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!response.ok) { throw new Error(`API request failed with status ${response.status}`); }
+                    
                     const result = await response.json();
+                    let responseText = result.candidates[0].content.parts[0].text;
 
-                    if (result.candidates && result.candidates.length > 0 &&
-                        result.candidates[0].content && result.candidates[0].content.parts &&
-                        result.candidates[0].content.parts.length > 0) {
-                        const text = result.candidates[0].content.parts[0].text;
-                        setSuggestedNotes(prevNotes => `${prevNotes ? prevNotes + '\n\n' : ''}✨ AI Risk Assessment & Mitigation:\n${text}`);
-                    } else {
-                        console.error("Unexpected API response structure:", result);
-                        throw new Error("Failed to extract text from API response. The response structure was not as expected.");
+                    responseText = responseText.trim().replace(/^```json\s*/, '').replace(/```$/, '');
+
+                    try {
+                        const parsedData = JSON.parse(responseText);
+                        if (Array.isArray(parsedData)) {
+                           setRiskMitigationPairs(parsedData);
+                        } else {
+                           throw new Error("AI did not return a JSON array.");
+                        }
+                    } catch(parseError) {
+                        console.error("JSON Parsing Error:", parseError, "Raw Response:", responseText);
+                        setGenerationError("The AI response was not in the correct format. Please try again.");
                     }
                 } catch (error) {
                     console.error("Error calling Gemini API:", error);
-                    setGenerationError(`Failed to generate risk assessment: ${error.message}. Check console for details.`);
-                    setAppError(`Gemini API Error: ${error.message}`);
+                    setGenerationError(`Failed to generate risk assessment: ${error.message}.`);
                 } finally {
                     setIsGeneratingRiskAssessment(false);
                 }
             };
 
+            const handleApplySuggestions = () => {
+                const formattedNotes = riskMitigationPairs.length > 0
+                    ? `AI Risk Assessment & Mitigation:\n\n` + riskMitigationPairs.map(p => `Risk: ${p.risk}\nMitigation: ${p.mitigation}`).join('\n\n')
+                    : 'No AI suggestions were applied.';
+                
+                onApplySuggestion(task.id, { 
+                    progress: task.progress, 
+                    status: task.status, 
+                    notes: formattedNotes 
+                }); 
+                onClose();
+            };
 
             return (
                 React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm" },
-                    React.createElement("div", { ref: modalContentRef, className: "modal-content p-6 rounded-xl shadow-xl w-full max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto" },
-                        React.createElement("h2", { className: "text-xl sm:text-2xl font-semibold mb-6 text-purple-600 flex items-center" }, 
+                    React.createElement("div", { ref: modalContentRef, className: "modal-content p-6 rounded-xl shadow-xl w-full max-w-lg sm:max-w-2xl max-h-[90vh] flex flex-col" },
+                        React.createElement("h2", { className: "text-xl sm:text-2xl font-semibold mb-4 text-purple-600 flex items-center flex-shrink-0" }, 
                             React.createElement(Zap, { size: 22, className: "mr-2" }), 
-                            loggedInUserType === 'admin' ? `AI Update for "${task.taskName}"` : `AI Suggestions for "${task.taskName}"`
+                            `AI Assessment for "${task.taskName}"`
                         ),
-                        React.createElement("div", { className: "space-y-4" },
-                            React.createElement("div", null,
-                                React.createElement("label", { className: "modal-label block text-sm font-medium mb-1" }, "Progress (%)"),
-                                React.createElement("input", { type: "number", min: "0", max: "100", value: suggestedProgress, onChange: (e) => setSuggestedProgress(parseInt(e.target.value, 10) || 0), className: "w-full p-2 modal-input rounded-md", disabled: loggedInUserType === 'client' })
-                            ),
-                            React.createElement("div", null,
-                                React.createElement("label", { className: "modal-label block text-sm font-medium mb-1" }, "Status"),
-                                React.createElement("select", { value: suggestedStatus, onChange: (e) => setSuggestedStatus(e.target.value), className: "w-full p-2 modal-input rounded-md", disabled: loggedInUserType === 'client' },
-                                    TASK_STATUSES.map((s) => (React.createElement("option", { key: s, value: s }, s)))
+                        React.createElement("div", { className: "space-y-4 overflow-y-auto pr-2 flex-grow" },
+                            React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4" },
+                                React.createElement("div", null,
+                                    React.createElement("label", { className: "modal-label block text-sm font-medium mb-1" }, "Current Progress (%)"),
+                                    React.createElement("input", { 
+                                        type: "text", 
+                                        value: suggestedProgress, 
+                                        className: "w-full p-2 modal-input rounded-md", 
+                                        disabled: true 
+                                    })
+                                ),
+                                React.createElement("div", null,
+                                    React.createElement("label", { className: "modal-label block text-sm font-medium mb-1" }, "Current Status"),
+                                    React.createElement("input", { 
+                                        type: "text", 
+                                        value: suggestedStatus, 
+                                        className: "w-full p-2 modal-input rounded-md", 
+                                        disabled: true 
+                                    })
                                 )
                             ),
-                            React.createElement("div", null,
-                                React.createElement("label", { className: "modal-label block text-sm font-medium mb-1" }, "Notes (Manual or AI-Generated)"),
-                                React.createElement("textarea", { rows: "4", value: suggestedNotes, onChange: (e) => setSuggestedNotes(e.target.value), className: "w-full p-2 modal-input rounded-md", readOnly: loggedInUserType === 'client' })
-                            ),
-                            generationError && React.createElement("p", { className: "text-xs text-red-600" }, generationError),
                             React.createElement("button", {
                                 type: "button",
                                 onClick: handleGenerateRiskAssessment,
@@ -1739,12 +2024,30 @@ Keep the entire response under 150 words.`;
                                 className: "w-full mt-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white font-semibold rounded-md flex items-center justify-center transition-colors disabled:opacity-50"
                             },
                                 isGeneratingRiskAssessment ? React.createElement("div", { className: "ai-spinner" }) : React.createElement(LightbulbIcon, { size: 18, className: "mr-2" }),
-                                isGeneratingRiskAssessment ? "Generating Insights..." : "✨ Generate Risk Assessment & Mitigation Ideas"
+                                isGeneratingRiskAssessment ? "Generating Insights..." : "Generate Risk Assessment & Mitigation Ideas"
+                            ),
+                            generationError && React.createElement("p", { className: "text-sm text-red-600 bg-red-50 p-2 rounded-md" }, generationError),
+                            
+                            (riskMitigationPairs.length > 0) && React.createElement("div", {className: "mt-4"},
+                                React.createElement("table", {className: "min-w-full divide-y divide-slate-200 border border-slate-200 rounded-lg"},
+                                    React.createElement("thead", {className: "bg-slate-50"},
+                                        React.createElement("tr", null, 
+                                            React.createElement("th", {className: "px-4 py-2 text-left text-sm font-semibold text-slate-700 w-1/2"}, "Risk Assessment"),
+                                            React.createElement("th", {className: "px-4 py-2 text-left text-sm font-semibold text-slate-700 w-1/2"}, "Mitigation Idea")
+                                        )
+                                    ),
+                                    React.createElement("tbody", {className: "divide-y divide-slate-200"},
+                                        riskMitigationPairs.map((pair, index) => React.createElement("tr", {key: index},
+                                            React.createElement("td", {className: "px-4 py-3 text-sm text-slate-600 align-top"}, pair.risk),
+                                            React.createElement("td", {className: "px-4 py-3 text-sm text-slate-600 align-top border-l border-slate-200"}, pair.mitigation)
+                                        ))
+                                    )
+                                )
                             )
                         ),
-                        React.createElement("div", { className: "flex justify-end gap-3 pt-6" },
+                        React.createElement("div", { className: "flex justify-end gap-3 pt-6 flex-shrink-0" },
                             React.createElement("button", { type: "button", onClick: onClose, className: "px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-md text-slate-700" }, "Close"),
-                            loggedInUserType === 'admin' && React.createElement("button", { type: "button", onClick: () => { onApplySuggestion(task.id, { progress: suggestedProgress, status: suggestedStatus, notes: suggestedNotes }); onClose(); }, className: "px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-md text-white font-semibold flex items-center" }, React.createElement(CheckCircle, { size: 18, className: "mr-2" }), "Apply Suggestions")
+                            loggedInUserType !== 'client' && React.createElement("button", { type: "button", onClick: handleApplySuggestions, disabled: riskMitigationPairs.length === 0, className: "px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-md text-white font-semibold flex items-center disabled:opacity-50" }, React.createElement(CheckCircle, { size: 18, className: "mr-2" }), "Apply to Notes")
                         )
                     )
                 )
@@ -1771,7 +2074,7 @@ Keep the entire response under 150 words.`;
             return (
                 React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm" },
                     React.createElement("div", { ref: modalContentRef, className: "modal-content p-6 rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" },
-                        React.createElement("h2", { className: "text-xl font-semibold mb-4 text-green-600 flex items-center" }, React.createElement(MessageSquareIcon, { size: 20, className: "mr-2" }), loggedInUserType === 'admin' ? `Notes for "${task.taskName}"` : `View Notes for "${task.taskName}"`),
+                        React.createElement("h2", { className: "text-xl font-semibold mb-4 text-green-600 flex items-center" }, React.createElement(MessageSquareIcon, { size: 20, className: "mr-2" }), loggedInUserType !== 'client' ? `Notes for "${task.taskName}"` : `View Notes for "${task.taskName}"`),
                         React.createElement("div", { className: "space-y-4" },
                             React.createElement("div", null,
                                 React.createElement("h3", { className: "font-medium text-slate-800 mb-2 text-sm" }, "Existing Notes"),
@@ -1786,7 +2089,7 @@ Keep the entire response under 150 words.`;
                                     )
                                 ) : (React.createElement("p", { className: "text-sm italic text-slate-500" }, "No notes yet."))
                             ),
-                            loggedInUserType === 'admin' && (
+                            loggedInUserType !== 'client' && (
                                 React.createElement("div", null,
                                     React.createElement("label", { htmlFor: "noteText", className: "modal-label block text-sm font-medium mb-1" }, "New Note"),
                                     React.createElement("textarea", { id: "noteText", rows: "3", className: "w-full p-2 modal-input rounded-md", value: noteText, onChange: (e) => setNoteText(e.target.value) })
@@ -1795,7 +2098,7 @@ Keep the entire response under 150 words.`;
                         ),
                         React.createElement("div", { className: "flex justify-end gap-3 pt-6" },
                             React.createElement("button", { type: "button", onClick: onClose, className: "px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-md text-slate-700" }, "Close"),
-                            loggedInUserType === 'admin' && (React.createElement("button", { type: "button", onClick: () => { if (noteText.trim()) { onAddNote(task.id, noteText.trim()); onClose(); } }, className: "px-4 py-2 bg-green-600 hover:bg-green-700 rounded-md text-white font-semibold flex items-center" }, React.createElement(PlusCircle, { size: 18, className: "mr-2" }), "Add Note"))
+                            loggedInUserType !== 'client' && (React.createElement("button", { type: "button", onClick: () => { if (noteText.trim()) { onAddNote(task.id, noteText.trim()); onClose(); } }, className: "px-4 py-2 bg-green-600 hover:bg-green-700 rounded-md text-white font-semibold flex items-center" }, React.createElement(PlusCircle, { size: 18, className: "mr-2" }), "Add Note"))
                         )
                     )
                 )
@@ -1824,8 +2127,6 @@ Keep the entire response under 150 words.`;
             const handleSendResponse = () => {
                 if (latestComment && selectedStatus) {
                     onClientRespond(task.id, latestComment.id, selectedStatus, clientCommentText);
-                    setSelectedStatus("");
-                    setClientCommentText("");
                     onClose();
                 }
             };
@@ -1835,8 +2136,8 @@ Keep the entire response under 150 words.`;
             return (
                 React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm" },
                     React.createElement("div", { ref: modalContentRef, className: "modal-content p-6 rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto" },
-                        React.createElement("h2", { className: "text-xl font-semibold mb-6 text-sky-600 flex items-center" }, React.createElement(MessageSquareIcon, { size: 20, className: "mr-2" }), loggedInUserType === "admin" ? `Client Communication for "${task.taskName}"` : `Client Response for "${task.taskName}"`),
-                        loggedInUserType === "admin" && (
+                        React.createElement("h2", { className: "text-xl font-semibold mb-6 text-sky-600 flex items-center" }, React.createElement(MessageSquareIcon, { size: 20, className: "mr-2" }), loggedInUserType !== "client" ? `Client Communication for "${task.taskName}"` : `Client Response for "${task.taskName}"`),
+                        loggedInUserType !== "client" && (
                             React.createElement("div", { className: "space-y-4" },
                                 React.createElement("div", null,
                                     React.createElement("h3", { className: "font-medium text-slate-800 mb-2 text-sm" }, "Communication Log"),
@@ -1863,7 +2164,7 @@ Keep the entire response under 150 words.`;
                                 ),
                                 React.createElement("div", { className: "flex justify-end gap-3 pt-4" },
                                     React.createElement("button", { type: "button", onClick: onClose, className: "px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-md text-slate-700" }, "Cancel"),
-                                    React.createElement("button", { type: "button", onClick: () => { if (adminCommentText.trim()) { onAdminAddComment(task.id, adminCommentText.trim()); setAdminCommentText(""); onClose(); } }, className: "px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md text-white font-semibold flex items-center" }, React.createElement(SendIcon, { size: 16, className: "mr-2" }), "Submit to Client")
+                                    React.createElement("button", { type: "button", onClick: () => { if (adminCommentText.trim()) { onAdminAddComment(task.id, adminCommentText.trim()); onClose(); } }, className: "px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md text-white font-semibold flex items-center" }, React.createElement(SendIcon, { size: 16, className: "mr-2" }), "Submit to Client")
                                 )
                             )
                         ),
@@ -1898,11 +2199,9 @@ Keep the entire response under 150 words.`;
             );
         };
 
-        // --- Mount the App ---
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(React.createElement(App));
 
     </script>
 </body>
-
 </html>
