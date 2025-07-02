@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, render_template
+from datetime import datetime, timedelta
 import os
 import json
 import pandas as pd
@@ -491,6 +492,127 @@ def upload_csv():
         return jsonify({"status": "uploaded", "rows": len(df)})
     except Exception as e:
         return jsonify({"status": "error", "message": f"An error occurred while processing the CSV: {str(e)}"}), 500
+
+# NEW: Route for the charts page
+@app.route('/charts')
+def charts_page():
+    # We can pass the project name to the template if needed
+    project_name = request.args.get('project', 'Default Project')
+    return render_template('charts.html', project_name=project_name)
+
+def get_s_curve_data(tasks):
+    """Calculates data for a planned vs actual progress S-Curve."""
+    all_leaf_tasks = []
+    def flatten_tasks(task_list):
+        for task in task_list:
+            # S-curves are based on leaf tasks (tasks with no subtasks) that have weightage
+            if not task.get('subtasks') and task.get('weightage', 0) > 0:
+                 all_leaf_tasks.append(task)
+            elif task.get('subtasks'): # Recurse into parent tasks
+                flatten_tasks(task['subtasks'])
+    flatten_tasks(tasks)
+
+    if not all_leaf_tasks:
+        return {}
+
+    # Determine project date range from planned and actual dates
+    try:
+        all_dates = []
+        for t in all_leaf_tasks:
+            if t.get('plannedStartDate'): all_dates.append(datetime.fromisoformat(t['plannedStartDate']))
+            if t.get('plannedEndDate'): all_dates.append(datetime.fromisoformat(t['plannedEndDate']))
+            if t.get('actualEndDate'): all_dates.append(datetime.fromisoformat(t['actualEndDate']))
+
+        if not all_dates: return {}
+        project_start_date = min(all_dates)
+        project_end_date = max(all_dates)
+    except (ValueError, TypeError):
+        return {} # Return empty if dates are invalid
+
+    # Calculate total weightage of all leaf tasks
+    total_weightage = sum(t.get('weightage', 0) for t in all_leaf_tasks)
+    if total_weightage == 0:
+        return {} # Avoid division by zero
+
+    # Generate S-curve data points
+    s_curve_data = {'dates': [], 'planned_progress': [], 'actual_progress': []}
+    current_date = project_start_date
+    while current_date <= project_end_date:
+        date_str = current_date.strftime('%d-%b-%y')
+
+        # Planned progress: sum of weightages of tasks *planned* to be finished by this date
+        planned_weight_done = sum(
+            t.get('weightage', 0) for t in all_leaf_tasks
+            if t.get('plannedEndDate') and datetime.fromisoformat(t['plannedEndDate']).date() <= current_date.date()
+        )
+
+        # Actual progress: sum of weightages of tasks *actually* finished by this date
+        actual_weight_done = sum(
+            t.get('weightage', 0) for t in all_leaf_tasks
+            if t.get('actualEndDate') and datetime.fromisoformat(t['actualEndDate']).date() <= current_date.date()
+        )
+
+        s_curve_data['dates'].append(date_str)
+        s_curve_data['planned_progress'].append(round((planned_weight_done / total_weightage) * 100, 2))
+        s_curve_data['actual_progress'].append(round((actual_weight_done / total_weightage) * 100, 2))
+
+        current_date += timedelta(days=1)
+
+    return s_curve_data
+
+
+# NEW: API endpoint to get aggregated data for charts
+@app.route('/api/chart_data')
+def get_chart_data():
+    project_name = request.args.get('project')
+    if not project_name:
+        return jsonify({"status": "error", "message": "Project name is required."}), 400
+
+    data_file = get_project_data_file(project_name)
+    if not os.path.exists(data_file):
+        # Return empty data structure so frontend doesn't break
+        return jsonify({
+            'status_counts': {}, 'total_delays': {}, 's_curve_data': {}, 'overall_actual_progress': 0
+        })
+
+    with open(data_file, 'r') as f:
+        tasks = json.load(f)
+
+    # Flatten the task list to get all tasks
+    all_tasks = []
+    def flatten_tasks(task_list):
+        for task in task_list:
+            all_tasks.append(task)
+            if task.get('subtasks'):
+                flatten_tasks(task['subtasks'])
+    flatten_tasks(tasks)
+
+    # 1. Task Status Distribution
+    status_counts = {}
+    for task in all_tasks:
+        status = task.get('status', 'Not Started')
+        status_counts[status] = status_counts.get(status, 0) + 1
+
+    # 2. Total Delays by Type
+    total_delays = { 'weather': 0, 'contractor': 0, 'client': 0 }
+    for task in all_tasks:
+        total_delays['weather'] += task.get('delayWeatherDays', 0) or 0
+        total_delays['contractor'] += task.get('delayContractorDays', 0) or 0
+        total_delays['client'] += task.get('delayClientDays', 0) or 0
+
+    # 3. Overall Actual Progress (manually entered progress from root task)
+    overall_actual_progress = tasks[0].get('progress', 0) if tasks else 0
+
+    # 4. NEW: S-Curve Data
+    s_curve_data = get_s_curve_data(tasks)
+
+    return jsonify({
+        'status_counts': status_counts,
+        'total_delays': total_delays,
+        's_curve_data': s_curve_data,
+        'overall_actual_progress': overall_actual_progress
+    })
+
 
 @app.route('/')
 def index():
