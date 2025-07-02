@@ -454,6 +454,7 @@
         }
     </style>
 </head>
+
 <body>
     <div id="root"></div>
 
@@ -494,6 +495,7 @@
         const MailIcon = (props) => React.createElement(SVGIcon, props, React.createElement("rect", {width:"20", height:"16", x:"2", y:"4", rx:"2"}), React.createElement("path", {d:"m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"}));
         const InfoIcon = (props) => React.createElement(SVGIcon, props, React.createElement("circle", { cx: "12", cy: "12", r: "10" }), React.createElement("line", { x1: "12", y1: "16", x2: "12", y2: "12" }), React.createElement("line", { x1: "12", y1: "8", x2: "12.01", y2: "8" }));
         const Trash2 = (props) => React.createElement(SVGIcon, props, React.createElement("polyline", { points: "3 6 5 6 21 6" }), React.createElement("path", { d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" }), React.createElement("line", { x1: "10", y1: "11", x2: "10", y2: "17" }), React.createElement("line", { x1: "14", y1: "11", x2: "14", y2: "17" }));
+        const HistoryIcon = (props) => React.createElement(SVGIcon, props, React.createElement("path", { d: "M1 4v6h6" }), React.createElement("path", { d: "M3.51 15a9 9 0 1 0 2.13-9.36L1 10" }));
 
         // --- Configuration & Constants ---
         const APP_TITLE = "PROTON ";
@@ -501,9 +503,8 @@
         const AUTH_STORAGE_KEY = 'aiProjectControlTowerAuth_v2';
         const TASK_STATUSES = ['Not Started', 'In Progress', 'Completed', 'Delayed', 'On Hold', 'Ahead of Schedule'];
         const CLIENT_COMMENT_STATUSES = ['Acknowledged', 'Approved', 'Return with Comments', 'Hold for Review'];
-        const GEMINI_API_KEY = "AIzaSyC-e9tMROkfDJyReFeOEXCZ-oFkbtmEdjw";
-        const CHATBOT_GEMINI_API_KEY = "AIzaSyDUlQc3PlmiCM47nNEUPuiw1Knfx_pfQV8";
-
+        const GEMINI_API_KEY = "AIzaSyC-e9tMROkfDJyReFeOEXCZ-oFkbtmEdjw"; // Replace with your actual key
+        const CHATBOT_GEMINI_API_KEY = "AIzaSyDUlQc3PlmiCM47nNEUPuiw1Knfx_pfQV8"; // Replace with your actual key
 
         const generateUUID = () => {
             // Simple UUID v4 generator
@@ -514,6 +515,14 @@
             });
         };
 
+        const LoadingSpinner = ({ message }) => {
+            return React.createElement("div", { className: "text-center py-10 bg-white shadow rounded-lg" }, 
+                React.createElement("div", { className: "flex items-center justify-center" }, 
+                    React.createElement("div", { className: "animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-sky-500" }), 
+                    React.createElement("p", { className: "ml-4 text-lg text-slate-500" }, message || "Loading...")
+                )
+            );
+        };
 
         // --- Helper Functions ---
         const parseCSVDate = (dateStr) => {
@@ -537,7 +546,7 @@
                 const p2 = parts[1];
                 const p3 = parts[2];
 
-                // Check for<x_bin_534>-MM-dd
+                // Check for YYYY-MM-dd
                 if (p1.length === 4 && p2.length === 2 && p3.length === 2) {
                     return cleanedDateStr;
                 }
@@ -570,7 +579,7 @@
         const formatDateForInput = (dateStr) => dateStr || '';
 
         const generateCSV = (tasksToExport) => {
-            const headers = ["WBS", "Task Name", "Original Duration (Days)", "Planned Start Date", "Planned End Date", "Actual Start Date", "Actual End Date", "Progress (%)", "Status", "Is Critical", "Predecessors", "Weather Delay (Days)", "Contractor Delay (Days)", "Client Delay (Days)", "Is Client Deliverable", "Notes", "Client Communications Log"];
+            const headers = ["WBS", "Task Name", "Original Duration (Days)", "Weightage (%)", "Planned Start Date", "Planned End Date", "Actual Start Date", "Actual End Date", "Progress (%)", "Status", "Is Critical", "Predecessors", "Weather Delay (Days)", "Contractor Delay (Days)", "Client Delay (Days)", "Is Client Deliverable", "Notes", "Client Communications Log"];
             
             const flattenedTasks = [];
             const flatten = (tasks) => {
@@ -585,7 +594,7 @@
 
             const rows = flattenedTasks.map(task => {
                 const clientCommLog = (task.clientComments || []).map(cc => {
-                    let log = `Admin (${formatDateForDisplay(cc.adminTimestamp)}): ${cc.adminComment.replace(/"/g, '""')}`;
+                    let log = `${cc.adminName || 'Admin'} (${formatDateForDisplay(cc.adminTimestamp)}): ${cc.adminComment.replace(/"/g, '""')}`;
                     if (cc.clientStatus) {
                         log += ` | Client (${formatDateForDisplay(cc.clientResponseTimestamp)}): ${cc.clientStatus}`;
                         if (cc.clientComment) {
@@ -597,6 +606,7 @@
 
                 return [
                     task.wbs || '', task.taskName || '', task.originalDurationDays || 0,
+                    task.weightage ?? 0, // MODIFIED: Default to 0 if weightage is null/undefined
                     formatDateForExport(task.plannedStartDate), formatDateForExport(task.plannedEndDate),
                     formatDateForExport(task.actualStartDate), formatDateForExport(task.actualEndDate),
                     task.progress || 0, task.status || 'Not Started', task.isCritical ? 'Yes' : 'No',
@@ -647,7 +657,7 @@
             );
         };
 
-        // --- OverallProgress Component (FIXED) ---
+        // --- OverallProgress Component ---
         const OverallProgress = ({ tasks }) => {
             const { useMemo } = React;
 
@@ -869,7 +879,7 @@
             return React.createElement('div', { className: 'prose', dangerouslySetInnerHTML: { __html: html } });
         };
         
-        // --- Chatbot Component (FIXED) ---
+        // --- Chatbot Component ---
         const Chatbot = ({ projectTasks, projectName }) => {
             const { useState, useEffect, useRef } = React;
             const [isOpen, setIsOpen] = useState(false);
@@ -907,7 +917,8 @@
                 const flattenTasks = (tasks) => {
                     let flat = [];
                     tasks.forEach(task => {
-                        flat.push(task);
+                        const { subtasks, ...taskWithoutSubtasks } = task; // Exclude subtasks from individual stringify
+                        flat.push(taskWithoutSubtasks);
                         if (task.subtasks && task.subtasks.length > 0) {
                             flat = flat.concat(flattenTasks(task.subtasks));
                         }
@@ -961,7 +972,7 @@
                 try {
                     const payload = { contents: chatHistory };
                     const apiKey = CHATBOT_GEMINI_API_KEY;
-                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
 
                     const response = await fetch(apiUrl, {
                         method: 'POST',
@@ -1128,6 +1139,63 @@
             );
         };
 
+        // --- NEW COMPONENT: ActivityLogModal ---
+        const ActivityLogModal = ({ onClose }) => {
+            const { useState, useEffect, useRef } = React;
+            const [logs, setLogs] = useState([]);
+            const [isLoading, setIsLoading] = useState(true);
+            const modalContentRef = useRef(null);
+
+            useEffect(() => {
+                fetch('/api/activity_log')
+                    .then(res => res.json())
+                    .then(data => setLogs(data))
+                    .catch(err => console.error("Failed to fetch activity log:", err))
+                    .finally(() => setIsLoading(false));
+
+                const handleClickOutside = (event) => {
+                    if (modalContentRef.current && !modalContentRef.current.contains(event.target)) {
+                        onClose();
+                    }
+                };
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => document.removeEventListener("mousedown", handleClickOutside);
+            }, [onClose]);
+
+            return React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm" },
+                React.createElement("div", { ref: modalContentRef, className: "modal-content p-6 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col" },
+                    React.createElement("h2", { className: "text-xl font-semibold mb-4 text-blue-600 border-b pb-2 flex items-center" }, 
+                        React.createElement(HistoryIcon, { size: 20, className: "mr-2" }),
+                        "Admin Activity Log"
+                    ),
+                    React.createElement("div", { className: "flex-grow overflow-y-auto" },
+                        isLoading ? React.createElement("p", null, "Loading logs...") :
+                        React.createElement("table", { className: "min-w-full divide-y divide-slate-200" },
+                            React.createElement("thead", { className: "bg-slate-50 sticky top-0" }, React.createElement("tr", null,
+                                React.createElement("th", {className: "px-3 py-2 text-left text-xs font-semibold text-slate-600 uppercase"}, "Timestamp"),
+                                React.createElement("th", {className: "px-3 py-2 text-left text-xs font-semibold text-slate-600 uppercase"}, "User"),
+                                React.createElement("th", {className: "px-3 py-2 text-left text-xs font-semibold text-slate-600 uppercase"}, "Project"),
+                                React.createElement("th", {className: "px-3 py-2 text-left text-xs font-semibold text-slate-600 uppercase"}, "Action"),
+                                React.createElement("th", {className: "px-3 py-2 text-left text-xs font-semibold text-slate-600 uppercase"}, "Details"),
+                            )),
+                            React.createElement("tbody", { className: "bg-white divide-y divide-slate-200" },
+                                logs.map((log, index) => React.createElement("tr", { key: index, className: "hover:bg-slate-50" },
+                                    React.createElement("td", {className: "px-3 py-2 whitespace-nowrap text-xs text-slate-500"}, new Date(log.timestamp).toLocaleString()),
+                                    React.createElement("td", {className: "px-3 py-2 whitespace-nowrap text-sm text-slate-800"}, log.user),
+                                    React.createElement("td", {className: "px-3 py-2 whitespace-nowrap text-sm text-slate-600"}, log.project || 'N/A'),
+                                    React.createElement("td", {className: "px-3 py-2 whitespace-nowrap text-sm text-slate-600"}, log.action),
+                                    React.createElement("td", {className: "px-3 py-2 text-sm text-slate-600"}, log.details)
+                                ))
+                            )
+                        )
+                    ),
+                     React.createElement("div", { className: "flex justify-end pt-6 mt-auto border-t" },
+                        React.createElement("button", { type: "button", onClick: onClose, className: "px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-md text-slate-700" }, "Close")
+                    )
+                )
+            );
+        };
+
         // --- NEW COMPONENT: TaskDetailsModal ---
         const TaskDetailsModal = ({ task, onClose, loggedInUserType }) => {
             const { useEffect, useRef } = React;
@@ -1179,6 +1247,7 @@
         };
         
         // --- Main Application Component (App) ---
+        // --- Main Application Component (App) ---
         const App = () => {
             const { useState, useEffect, useCallback, useMemo } = React;
             
@@ -1221,6 +1290,7 @@
             const [showAddProjectModal, setShowAddProjectModal] = useState(false);
             const [showAddTaskModal, setShowAddTaskModal] = useState(false);
             const [showDetailsModal, setShowDetailsModal] = useState(false);
+            const [showActivityLogModal, setShowActivityLogModal] = useState(false); // New state for log modal
             const [selectedTask, setSelectedTask] = useState(null);
             const [addTaskTarget, setAddTaskTarget] = useState(null);
             const [searchTerm, setSearchTerm] = useState('');
@@ -1309,13 +1379,6 @@
                             if (!tasksToNormalize || !Array.isArray(tasksToNormalize)) return [];
                             return tasksToNormalize.map(t => {
                                 const subtasks = (t.subtasks && t.subtasks.length > 0) ? normalizeTasks(t.subtasks) : [];
-                                
-                                let progress = t.progress || 0;
-                                // If task has subtasks, calculate its progress based on them
-                                if (subtasks.length > 0) {
-                                    const totalProgress = subtasks.reduce((sum, st) => sum + (st.progress || 0), 0);
-                                    progress = Math.round(totalProgress / subtasks.length);
-                                }
 
                                 return {
                                     id: t.id || generateUUID(),
@@ -1324,16 +1387,17 @@
                                     plannedStartDate: parseCSVDate(t.plannedStartDate || ''),
                                     plannedEndDate: parseCSVDate(t.plannedEndDate || ''),
                                     predecessorString: t.predecessorString || '',
-                                    originalDurationDays: String(t.originalDurationDays).replace(' days', '') || '0',
+                                    originalDurationDays: String(t.originalDurationDays || '0').replace(' days', ''),
+                                    weightage: t.weightage ?? 0,
                                     actualStartDate: parseCSVDate(t.actualStartDate || ''),
                                     actualEndDate: parseCSVDate(t.actualEndDate || ''),
-                                    progress: progress,
+                                    progress: t.progress || 0, // Will be recalculated
                                     status: t.status || 'Not Started',
                                     notes: t.notes || [],
                                     isClientDeliverable: t.isClientDeliverable || false,
                                     isCritical: t.isCritical || false,
                                     dependencies: t.dependencies || [],
-                                    clientComments: t.clientComments || [],
+                                    clientComments: (t.clientComments || []).map(c => ({...c, id: c.id || generateUUID()})), // Ensure comments have IDs
                                     delayWeatherDays: t.delayWeatherDays || 0,
                                     delayContractorDays: t.delayContractorDays || 0,
                                     delayClientDays: t.delayClientDays || 0,
@@ -1344,50 +1408,65 @@
                         };
 
                         const normalized = normalizeTasks(raw || []);
-                        setTasks(normalized);
+                        setTasks(recalculateParentProgress(normalized)); // Recalculate on load
                     })
                     .catch(err => setAppError(`Could not load tasks for ${projectName}: ` + err.message))
                     .finally(() => setIsLoading(false));
             }, []);
 
-            // FIX: Function to recalculate parent progress from children
             const recalculateParentProgress = (taskList) => {
                 return taskList.map(task => {
                     if (task.subtasks && task.subtasks.length > 0) {
-                        // First, ensure all subtasks have their correct progress calculated
                         const updatedSubtasks = recalculateParentProgress(task.subtasks);
                         
-                        // Then, calculate this parent's progress from its updated children
-                        const totalProgress = updatedSubtasks.reduce((sum, st) => sum + (st.progress || 0), 0);
-                        const newProgress = Math.round(totalProgress / updatedSubtasks.length);
-
+                        let totalWeight = 0;
+                        let weightedProgressSum = 0;
+                        updatedSubtasks.forEach(st => {
+                            const weight = parseFloat(st.weightage ?? 0);
+                            const progress = parseFloat(st.progress || 0);
+                            if (!isNaN(weight) && !isNaN(progress)) {
+                                totalWeight += weight;
+                                weightedProgressSum += progress * weight;
+                            }
+                        });
+                        
+                        const newProgress = totalWeight > 0 ? Math.round(weightedProgressSum / totalWeight) : 0;
                         return { ...task, subtasks: updatedSubtasks, progress: newProgress };
                     }
-                    return task; // Return task as is if it has no subtasks
+                    return task;
                 });
             };
 
-            const handleUpdateTask = useCallback((taskId, updatedData) => {
-                let updatedTasks = updateTaskRecursively(tasks, taskId, updatedData);
-                // After any update, run the recalculation on the entire tree
-                updatedTasks = recalculateParentProgress(updatedTasks);
+            const saveDataToServer = useCallback((tasksToSave, successMessage = 'Saved successfully') => {
+                let updatedTasks = recalculateParentProgress(tasksToSave);
+                
+                const payload = {
+                    tasks: updatedTasks,
+                    user_email: loggedInUser.email
+                };
 
                 fetch(`/api/save?project=${encodeURIComponent(selectedProject)}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updatedTasks)
+                    body: JSON.stringify(payload)
                 })
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'success') {
                          setTasks(updatedTasks);
-                         setNotification({ message: 'Saved successfully', type: 'success' });
+                         setNotification({ message: successMessage, type: 'success' });
                     } else {
                         throw new Error(data.message || 'Save failed');
                     }
                 })
                 .catch(err => setAppError('Save error: ' + err.message));
-            }, [tasks, selectedProject]);
+            }, [selectedProject, loggedInUser]);
+
+
+            const handleUpdateTask = useCallback((taskId, updatedData) => {
+                const updatedTasks = updateTaskRecursively(tasks, taskId, updatedData);
+                saveDataToServer(updatedTasks);
+            }, [tasks, saveDataToServer]);
             
             const handleConfirmAddTask = useCallback((targetTask, newTaskData) => {
                 if (!targetTask || !newTaskData) return;
@@ -1409,6 +1488,7 @@
                     plannedEndDate: newTaskData.plannedEndDate,
                     predecessorString: '',
                     originalDurationDays: '1',
+                    weightage: 0,
                     actualStartDate: null, actualEndDate: null,
                     progress: 0, status: 'Not Started', notes: [],
                     isClientDeliverable: false, isCritical: false,
@@ -1432,22 +1512,8 @@
 
                 const updatedTasks = JSON.parse(JSON.stringify(tasks));
                 insertTaskRecursively(updatedTasks, targetTask.id);
-
-                fetch(`/api/save?project=${encodeURIComponent(selectedProject)}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updatedTasks)
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        setTasks(updatedTasks);
-                        setNotification({ message: 'New task added successfully.', type: 'success' });
-                    } else { throw new Error(data.message || 'Save failed'); }
-                })
-                .catch(err => setAppError('Save error: ' + err.message));
-
-            }, [tasks, selectedProject]);
+                saveDataToServer(updatedTasks, 'New task added successfully.');
+            }, [tasks, saveDataToServer]);
 
             const handleDeleteTask = useCallback((taskId) => {
                 if (!window.confirm("Are you sure you want to delete this task and all its subtasks? This action cannot be undone.")) {
@@ -1469,22 +1535,8 @@
                 };
                 
                 const updatedTasks = deleteTaskRecursively(tasks, taskId);
-
-                fetch(`/api/save?project=${encodeURIComponent(selectedProject)}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updatedTasks)
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        setTasks(updatedTasks);
-                        setNotification({ message: 'Task deleted successfully.', type: 'info' });
-                    } else { throw new Error(data.message || 'Delete failed'); }
-                })
-                .catch(err => setAppError('Delete error: ' + err.message));
-
-            }, [tasks, selectedProject]);
+                saveDataToServer(updatedTasks, 'Task deleted successfully.');
+            }, [tasks, saveDataToServer]);
 
             const handleToggleExpansion = (taskId) => {
                 const toggle = (taskList) => {
@@ -1511,44 +1563,41 @@
                     }));
                 };
                 const updatedTasks = toggleRecursively(tasks);
+                const message = shouldSelectAll ? 'All tasks marked for client view.' : 'All tasks removed from client view.';
+                saveDataToServer(updatedTasks, message);
+            }, [tasks, saveDataToServer]);
 
-                fetch(`/api/save?project=${encodeURIComponent(selectedProject)}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updatedTasks)
-                })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                         setTasks(updatedTasks);
-                         const message = shouldSelectAll ? 'All tasks marked for client view.' : 'All tasks removed from client view.';
-                         setNotification({ message: message, type: 'success' });
-                    } else {
-                        throw new Error(data.message || 'Bulk update failed');
-                    }
-                })
-                .catch(err => setAppError('Save error: ' + err.message));
-            }, [tasks, selectedProject]);
-
-
+            // MODIFIED: This function now manages the loading state for CSV imports.
             const handleFileUpload = event => {
                 const file = event.target.files[0];
                 if (!file || !selectedProject) return;
+
+                setIsLoading(true); // Show loader immediately
                 
                 const formData = new FormData();
                 formData.append('file', file);
+                formData.append('user_email', loggedInUser.email);
                 
                 fetch(`/api/upload?project=${encodeURIComponent(selectedProject)}`, { method: 'POST', body: formData })
-                    .then(res => res.json())
+                    .then(res => {
+                        if (!res.ok) {
+                            // Try to get a specific error message from the server response
+                            return res.json().then(err => { throw new Error(err.message || 'Server-side upload failed.') });
+                        }
+                        return res.json();
+                    })
                     .then(data => {
                         if (data.status === 'uploaded') {
-                             loadInitialData(selectedProject);
+                             loadInitialData(selectedProject); // Reload data, which will manage the loader
                              setNotification({ message: 'CSV imported successfully and hierarchy built.', type: 'success' });
                         } else {
-                            throw new Error(data.message || 'Upload failed');
+                            throw new Error(data.message || 'Upload failed after connecting.');
                         }
                     })
-                    .catch(err => setAppError('CSV upload failed: ' + err.message));
+                    .catch(err => {
+                        setAppError('CSV upload failed: ' + err.message);
+                        setIsLoading(false); // Ensure loader is turned off on failure
+                    });
                 event.target.value = null; // Reset file input
             };
             
@@ -1639,7 +1688,6 @@
                         return;
                     }
 
-                    // --- START OF THE FIX FOR CROPPING ---
                     const fullWidth = ganttElement.scrollWidth;
                     const fullHeight = ganttElement.scrollHeight;
                     const clone = ganttElement.cloneNode(true);
@@ -1650,7 +1698,6 @@
                     clone.style.left = '-9999px';
                     clone.style.top = '0px';
                     document.body.appendChild(clone);
-                    // --- END OF THE FIX FOR CROPPING ---
 
                     window.html2canvas(clone, { 
                         backgroundColor: '#ffffff',
@@ -1758,7 +1805,7 @@
                 });
             }
             
-            const mainContent = React.createElement("div", { className: "min-h-screen bg-slate-100 p-2 sm:p-4 md:p-8 font-sans" },
+            return React.createElement("div", { className: "min-h-screen bg-slate-100 p-2 sm:p-4 md:p-8 font-sans" },
                 // Header
                 React.createElement("header", { key: "header", className: "mb-6 p-4 bg-white shadow-md rounded-lg" },
                     React.createElement("div", { className: "flex flex-col sm:flex-row items-center justify-between" },
@@ -1770,7 +1817,13 @@
                             React.createElement("h1", { className: "text-sm font-bold text-slate-500" }, APP_SUBTITLE)
                           )
                         ),
-                        React.createElement("button", { onClick: handleLogout, className: "w-full sm:w-auto px-4 py-2 text-sm font-medium text-slate-700 bg-slate-200 hover:bg-slate-300 rounded-lg flex items-center justify-center" }, React.createElement(LogOutIcon, { size: 16, className: "mr-2" }), "Logout")
+                        React.createElement("div", { className: "flex items-center gap-4" },
+                            loggedInUser.userType === 'super_admin' && React.createElement("button", { 
+                                onClick: () => setShowActivityLogModal(true), 
+                                className: "px-4 py-2 text-sm font-medium text-slate-700 bg-slate-200 hover:bg-slate-300 rounded-lg flex items-center justify-center" 
+                            }, React.createElement(HistoryIcon, { size: 16, className: "mr-2" }), "Activity Log"),
+                            React.createElement("button", { onClick: handleLogout, className: "px-4 py-2 text-sm font-medium text-slate-700 bg-slate-200 hover:bg-slate-300 rounded-lg flex items-center justify-center" }, React.createElement(LogOutIcon, { size: 16, className: "mr-2" }), "Logout")
+                        )
                     ),
                     // Project Selector and View Toggles
                      React.createElement("div", { className: "mt-4 flex flex-col sm:flex-col justify-center items-center gap-4 mt-4" },
@@ -1802,7 +1855,7 @@
                 }),
 
                 // Main Content Area
-                tasks.length > 0 && React.createElement(OverallProgress, { key: "overall-progress", tasks: tasks }),
+                tasks.length > 0 && !isLoading && React.createElement(OverallProgress, { key: "overall-progress", tasks: tasks }),
                 React.createElement("div", { className: "mb-4 p-4 bg-white shadow-md rounded-lg flex flex-col sm:flex-row sm:items-center gap-4 flex-wrap" }, 
                     React.createElement("input", { type: "text", placeholder: "Search tasks...", className: "flex-grow p-3 bg-slate-50 text-slate-700 rounded-md border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none", value: searchTerm, onChange: (e) => setSearchTerm(e.target.value) }),
                     React.createElement("div", { className: "flex items-center gap-2" },
@@ -1823,29 +1876,35 @@
                         currentView === 'admin' && React.createElement("button", { onClick: () => handleExport('gantt'), className: "file-input-button bg-amber-500 hover:bg-amber-600 text-white", disabled: tasks.length === 0 }, React.createElement(Image, { size: 18, className: "mr-2" }), React.createElement("span", {className: "hidden sm:inline"}, "Gantt Image"))
                     )
                 ),
-                filteredAndSortedTasks.length > 0 ?
-                    React.createElement(TaskTable, { 
-                        tasks: filteredAndSortedTasks, 
-                        viewType: currentView, 
-                        loggedInUserType: loggedInUser.userType, 
-                        onUpdateTask: handleUpdateTask, 
-                        onAddTask: openAddTaskModal,
-                        onDeleteTask: handleDeleteTask,
-                        onEditTask: openEditModal, 
-                        onAIUpdate: openAIModal, 
-                        onShowNotes: openNotesModal,
-                        onShowDetails: openDetailsModal,
-                        onClientComm: openClientCommModal, 
-                        onToggleClientDeliverable: (task, isDeliverable) => handleUpdateTask(task.id, { ...task, isClientDeliverable: isDeliverable }), 
-                        onToggleExpansion: handleToggleExpansion, 
-                        sortBy: sortBy, 
-                        onSort: handleSort,
-                        onToggleAllClientDeliverables: handleToggleAllClientDeliverables,
-                     }) :
-                    React.createElement("div", { className: "text-center py-10 bg-white shadow rounded-lg" }, React.createElement(MessageSquareIcon, { className: "mx-auto h-12 w-12 text-slate-400" }), React.createElement("h3", { className: "mt-2 text-lg font-medium text-slate-700" }, "No Tasks Found"), React.createElement("p", { className: "mt-1 text-sm text-slate-500 px-4" }, !selectedProject ? "Please select a project to view tasks." : currentView === 'client' && !searchTerm ? "No tasks marked as client deliverables for this project." : (searchTerm || dateFilter) ? "No tasks match your filter criteria." : "No tasks available. Try importing a CSV if you are an Admin.")),
-                ((currentView === 'admin' && loggedInUser.userType !== 'client') || currentView === 'client') && filteredAndSortedTasks.length > 0 && React.createElement(GanttChart, { tasks: filteredAndSortedTasks }),
+                
+                // MODIFIED: Logic to show loader or task table
+                isLoading ?
+                    React.createElement(LoadingSpinner, { message: "Loading Tasks..." }) :
+                    (filteredAndSortedTasks.length > 0 ?
+                        React.createElement(TaskTable, { 
+                            tasks: filteredAndSortedTasks, 
+                            viewType: currentView, 
+                            loggedInUserType: loggedInUser.userType, 
+                            onUpdateTask: handleUpdateTask, 
+                            onAddTask: openAddTaskModal,
+                            onDeleteTask: handleDeleteTask,
+                            onEditTask: openEditModal, 
+                            onAIUpdate: openAIModal, 
+                            onShowNotes: openNotesModal,
+                            onShowDetails: openDetailsModal,
+                            onClientComm: openClientCommModal, 
+                            onToggleClientDeliverable: (task, isDeliverable) => handleUpdateTask(task.id, { ...task, isClientDeliverable: isDeliverable }), 
+                            onToggleExpansion: handleToggleExpansion, 
+                            sortBy: sortBy, 
+                            onSort: handleSort,
+                            onToggleAllClientDeliverables: handleToggleAllClientDeliverables,
+                        }) :
+                        React.createElement("div", { className: "text-center py-10 bg-white shadow rounded-lg" }, React.createElement(MessageSquareIcon, { className: "mx-auto h-12 w-12 text-slate-400" }), React.createElement("h3", { className: "mt-2 text-lg font-medium text-slate-700" }, "No Tasks Found"), React.createElement("p", { className: "mt-1 text-sm text-slate-500 px-4" }, !selectedProject ? "Please select a project to view tasks." : currentView === 'client' && !searchTerm ? "No tasks marked as client deliverables for this project." : (searchTerm || dateFilter) ? "No tasks match your filter criteria." : "No tasks available. Try importing a CSV if you are an Admin."))),
+                
+                ((currentView === 'admin' && loggedInUser.userType !== 'client') || currentView === 'client') && !isLoading && filteredAndSortedTasks.length > 0 && React.createElement(GanttChart, { tasks: filteredAndSortedTasks }),
 
                 // Modals
+                showActivityLogModal && React.createElement(ActivityLogModal, { onClose: () => setShowActivityLogModal(false) }),
                 showDetailsModal && selectedTask && React.createElement(TaskDetailsModal, { task: selectedTask, onClose: () => setShowDetailsModal(false), loggedInUserType: loggedInUser.userType }),
                 showEditModal && selectedTask && React.createElement(EditTaskModal, { task: selectedTask, onClose: () => setShowEditModal(false), onSave: (updatedTask) => { handleUpdateTask(selectedTask.id, updatedTask); setShowEditModal(false); } }),
                 showAddProjectModal && React.createElement(AddProjectModal, { onClose: () => setShowAddProjectModal(false), onAdd: handleAddProject }),
@@ -1862,28 +1921,28 @@
                     onApplySuggestion: (taskId, suggestion) => {
                       const t = findTaskByIdRecursively(tasks, taskId);
                       if (!t) return;
-                      const aiNote = { text: suggestion.notes, timestamp: new Date().toISOString(), source: 'ai' };
+                      const aiNote = { text: suggestion.notes, timestamp: new Date().toISOString(), source: 'AI Assistant' };
                       handleUpdateTask(taskId, { notes: [...(t.notes || []), aiNote], progress: suggestion.progress, status: suggestion.status });
                       setNotification({ message: "AI suggestions applied.", type: "success" });
                     },
                     setAppError: setAppError
                 }),
                 showNotesModal && selectedTask && React.createElement(NotesModal, {
-                    key: "notes-modal", task: selectedTask, loggedInUserType: loggedInUser.userType, onClose: () => setShowNotesModal(false),
+                    key: "notes-modal", task: selectedTask, loggedInUser: loggedInUser, onClose: () => setShowNotesModal(false),
                     onAddNote: (taskId, noteText) => {
                         const t = findTaskByIdRecursively(tasks, taskId); 
                         if (!t) return;
-                        const newNote = { text: noteText, timestamp: new Date().toISOString(), source: 'manual' };
+                        const newNote = { text: noteText, timestamp: new Date().toISOString(), source: loggedInUser.name }; // Use user's name
                         handleUpdateTask(taskId, { notes: [...(t.notes || []), newNote] });
                         setNotification({ message: "Note added successfully.", type: "success" });
                     }
                 }),
                 showClientCommModal && selectedTask && React.createElement(ClientCommunicationModal, {
-                    key: "client-comm-modal", task: selectedTask, loggedInUserType: loggedInUser.userType, onClose: () => setShowClientCommModal(false),
+                    key: "client-comm-modal", task: selectedTask, loggedInUser: loggedInUser, onClose: () => setShowClientCommModal(false),
                     onAdminAddComment: (taskId, commentText) => {
                         const task = findTaskByIdRecursively(tasks, taskId); 
                         if (!task) return;
-                        const newComment = { id: generateUUID(), adminComment: commentText, adminTimestamp: new Date().toISOString() };
+                        const newComment = { id: generateUUID(), adminComment: commentText, adminTimestamp: new Date().toISOString(), adminName: loggedInUser.name }; // Add admin's name
                         handleUpdateTask(taskId, { clientComments: [...(task.clientComments || []), newComment] });
                     },
                     onClientRespond: (taskId, commentId, status, clientComment) => {
@@ -1897,8 +1956,6 @@
                 // Chatbot
                 React.createElement(Chatbot, { key: "chatbot", projectTasks: tasks, projectName: selectedProject })
             );
-
-            return mainContent;
         };
 
         // --- AddProjectModal Component ---
@@ -2205,19 +2262,8 @@
                 rowClasses.push('font-bold');
             }
             if (task.isCritical && viewType === 'admin') {
-                rowClasses.push('ring-1', 'ring-red-400');
+                rowClasses.push('bg-red-50');
             }
-
-            // Apply background/hover styles based on state
-            if (isDelayed) {
-                rowClasses.push('delayed-task-row');
-            } else {
-                rowClasses.push('hover:bg-slate-50');
-                if (hasSubtasks) {
-                    rowClasses.push('bg-slate-50'); // Only apply default parent bg if not delayed
-                }
-            }
-
 
             return (
                 React.createElement(React.Fragment, null,
@@ -2277,7 +2323,7 @@
             );
         };
 
-
+        // --- MODIFIED: EditTaskModal ---
         const EditTaskModal = ({ task, onClose, onSave }) => {
             const { useState, useEffect, useRef } = React;
             const [formData, setFormData] = useState({ ...task });
@@ -2298,35 +2344,45 @@
             }, [onClose]);
 
             useEffect(() => {
-                setFormData({ ...task });
+                // MODIFIED: Use nullish coalescing operator to default weightage to 0
+                setFormData({ ...task, weightage: task.weightage ?? 0 });
             }, [task]);
 
-            const handleChange = (e) => { const { name, value, type, checked } = e.target; setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : (type === 'number' ? parseInt(value, 10) || 0 : value) })); };
+            const handleChange = (e) => { const { name, value, type, checked } = e.target; setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : (type === 'number' ? parseFloat(value) || 0 : value) })); };
 
             const handleSubmit = (e) => {
                 e.preventDefault();
-                const finalData = { ...formData, progress: Math.max(0, Math.min(100, Number(formData.progress) || 0)), actualStartDate: formData.actualStartDate || null, actualEndDate: formData.actualEndDate || null, delayWeatherDays: Number(formData.delayWeatherDays) || 0, delayContractorDays: Number(formData.delayContractorDays) || 0, delayClientDays: Number(formData.delayClientDays) || 0 };
+                // MODIFIED: Ensure weightage defaults to 0 on save
+                const finalData = { ...formData, progress: Math.max(0, Math.min(100, Number(formData.progress) || 0)), actualStartDate: formData.actualStartDate || null, actualEndDate: formData.actualEndDate || null, delayWeatherDays: Number(formData.delayWeatherDays) || 0, delayContractorDays: Number(formData.delayContractorDays) || 0, delayClientDays: Number(formData.delayClientDays) || 0, weightage: Number(formData.weightage) ?? 0 };
                 onSave(finalData);
             };
             return (React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm" }, 
                 React.createElement("div", { ref: modalContentRef, className: "modal-content p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto" }, 
-                React.createElement("h2", { className: "text-xl sm:text-2xl font-semibold mb-6 text-sky-600" }, "Edit Task: ", React.createElement("span", {className: "font-bold"}, task.taskName)), React.createElement("form", { onSubmit: handleSubmit, className: "space-y-4" },
-                React.createElement("div", null, 
-                    React.createElement("label", { htmlFor: "progress", className: "modal-label block text-sm font-medium mb-1" }, "Progress (%)"), 
-                    hasSubtasks && React.createElement("p", {className: "text-xs text-slate-500 mb-1"}, "Progress is automatically calculated from subtasks."),
-                    React.createElement("input", { type: "number", name: "progress", id: "progress", value: formData.progress || 0, onChange: handleChange, min: "0", max: "100", className: "w-full p-2 modal-input rounded-md", disabled: hasSubtasks })
-                ),
-                React.createElement("div", null, React.createElement("label", { htmlFor: "status", className: "modal-label block text-sm font-medium mb-1" }, "Status"), React.createElement("select", { name: "status", id: "status", value: formData.status, onChange: handleChange, className: "w-full p-2 modal-input rounded-md" }, TASK_STATUSES.map(s => React.createElement("option", { key: s, value: s }, s)))),
-                React.createElement("div", null, React.createElement("label", { htmlFor: "actualStartDate", className: "modal-label block text-sm font-medium mb-1" }, "Actual Start Date"), React.createElement("input", { type: "date", name: "actualStartDate", id: "actualStartDate", value: formatDateForInput(formData.actualStartDate), onChange: handleChange, className: "w-full p-2 modal-input rounded-md" })),
-                React.createElement("div", null, React.createElement("label", { htmlFor: "actualEndDate", className: "modal-label block text-sm font-medium mb-1" }, "Actual End Date"), React.createElement("input", { type: "date", name: "actualEndDate", id: "actualEndDate", value: formatDateForInput(formData.actualEndDate), onChange: handleChange, className: "w-full p-2 modal-input rounded-md" })),
-                React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-4" },
-                    React.createElement("div", null, React.createElement("label", { htmlFor: "delayWeatherDays", className: "modal-label block text-sm font-medium mb-1" }, "Weather Delay"), React.createElement("input", { type: "number", name: "delayWeatherDays", id: "delayWeatherDays", value: formData.delayWeatherDays || 0, onChange: handleChange, min: "0", className: "w-full p-2 modal-input rounded-md" })),
-                    React.createElement("div", null, React.createElement("label", { htmlFor: "delayContractorDays", className: "modal-label block text-sm font-medium mb-1" }, "Contractor Delay"), React.createElement("input", { type: "number", name: "delayContractorDays", id: "delayContractorDays", value: formData.delayContractorDays || 0, onChange: handleChange, min: "0", className: "w-full p-2 modal-input rounded-md" })),
-                    React.createElement("div", null, React.createElement("label", { htmlFor: "delayClientDays", className: "modal-label block text-sm font-medium mb-1" }, "Client Delay"), React.createElement("input", { type: "number", name: "delayClientDays", id: "delayClientDays", value: formData.delayClientDays || 0, onChange: handleChange, min: "0", className: "w-full p-2 modal-input rounded-md" }))
-                ),
-                React.createElement("div", null, React.createElement("label", { htmlFor: "predecessorString", className: "modal-label block text-sm font-medium mb-1" }, "Predecessors"), React.createElement("input", { type: "text", name: "predecessorString", id: "predecessorString", value: formData.predecessorString || '', onChange: handleChange, className: "w-full p-2 modal-input rounded-md", placeholder: "e.g., 17, 3FS+4d" })),
-                React.createElement("div", { className: "flex items-center space-x-4" }, React.createElement("label", { htmlFor: "isCritical", className: "flex items-center text-sm font-medium modal-label" }, React.createElement("input", { type: "checkbox", name: "isCritical", id: "isCritical", checked: !!formData.isCritical, onChange: handleChange, className: "h-4 w-4 text-red-600 border-slate-300 rounded focus:ring-red-500 mr-2" }), "Mark as Critical"), React.createElement("label", { htmlFor: "isClientDeliverable", className: "flex items-center text-sm font-medium modal-label" }, React.createElement("input", { type: "checkbox", name: "isClientDeliverable", id: "isClientDeliverable", checked: !!formData.isClientDeliverable, onChange: handleChange, className: "h-4 w-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500 mr-2" }), "Client Deliverable")),
-                React.createElement("div", { className: "flex justify-end space-x-3 pt-4" }, React.createElement("button", { type: "button", onClick: onClose, className: "px-4 py-2 rounded-md bg-slate-200 hover:bg-slate-300 text-slate-700 transition-colors" }, "Cancel"), React.createElement("button", { type: "submit", className: "px-4 py-2 rounded-md bg-sky-600 hover:bg-sky-700 text-white font-semibold transition-colors flex items-center" }, React.createElement(Save, { size: 18, className: "mr-2" }), " Save Changes"))))));
+                React.createElement("h2", { className: "text-xl sm:text-2xl font-semibold mb-6 text-sky-600" }, "Edit Task: ", React.createElement("span", {className: "font-bold"}, task.taskName)), 
+                React.createElement("form", { onSubmit: handleSubmit, className: "space-y-4" },
+                    React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4" },
+                        React.createElement("div", null, 
+                            React.createElement("label", { htmlFor: "progress", className: "modal-label block text-sm font-medium mb-1" }, "Progress (%)"), 
+                            hasSubtasks && React.createElement("p", {className: "text-xs text-slate-500 mb-1"}, "Calculated from subtasks."),
+                            React.createElement("input", { type: "number", name: "progress", id: "progress", value: formData.progress || 0, onChange: handleChange, min: "0", max: "100", className: "w-full p-2 modal-input rounded-md", disabled: hasSubtasks })
+                        ),
+                        React.createElement("div", null, 
+                            React.createElement("label", { htmlFor: "weightage", className: "modal-label block text-sm font-medium mb-1" }, "Weightage (%)"), 
+                            // MODIFIED: Input value defaults to 0
+                            React.createElement("input", { type: "number", name: "weightage", id: "weightage", value: formData.weightage ?? 0, onChange: handleChange, min: "0", step: "any", className: "w-full p-2 modal-input rounded-md" })
+                        )
+                    ),
+                    React.createElement("div", null, React.createElement("label", { htmlFor: "status", className: "modal-label block text-sm font-medium mb-1" }, "Status"), React.createElement("select", { name: "status", id: "status", value: formData.status, onChange: handleChange, className: "w-full p-2 modal-input rounded-md" }, TASK_STATUSES.map(s => React.createElement("option", { key: s, value: s }, s)))),
+                    React.createElement("div", null, React.createElement("label", { htmlFor: "actualStartDate", className: "modal-label block text-sm font-medium mb-1" }, "Actual Start Date"), React.createElement("input", { type: "date", name: "actualStartDate", id: "actualStartDate", value: formatDateForInput(formData.actualStartDate), onChange: handleChange, className: "w-full p-2 modal-input rounded-md" })),
+                    React.createElement("div", null, React.createElement("label", { htmlFor: "actualEndDate", className: "modal-label block text-sm font-medium mb-1" }, "Actual End Date"), React.createElement("input", { type: "date", name: "actualEndDate", id: "actualEndDate", value: formatDateForInput(formData.actualEndDate), onChange: handleChange, className: "w-full p-2 modal-input rounded-md" })),
+                    React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-4" },
+                        React.createElement("div", null, React.createElement("label", { htmlFor: "delayWeatherDays", className: "modal-label block text-sm font-medium mb-1" }, "Weather Delay"), React.createElement("input", { type: "number", name: "delayWeatherDays", id: "delayWeatherDays", value: formData.delayWeatherDays || 0, onChange: handleChange, min: "0", className: "w-full p-2 modal-input rounded-md" })),
+                        React.createElement("div", null, React.createElement("label", { htmlFor: "delayContractorDays", className: "modal-label block text-sm font-medium mb-1" }, "Contractor Delay"), React.createElement("input", { type: "number", name: "delayContractorDays", id: "delayContractorDays", value: formData.delayContractorDays || 0, onChange: handleChange, min: "0", className: "w-full p-2 modal-input rounded-md" })),
+                        React.createElement("div", null, React.createElement("label", { htmlFor: "delayClientDays", className: "modal-label block text-sm font-medium mb-1" }, "Client Delay"), React.createElement("input", { type: "number", name: "delayClientDays", id: "delayClientDays", value: formData.delayClientDays || 0, onChange: handleChange, min: "0", className: "w-full p-2 modal-input rounded-md" }))
+                    ),
+                    React.createElement("div", null, React.createElement("label", { htmlFor: "predecessorString", className: "modal-label block text-sm font-medium mb-1" }, "Predecessors"), React.createElement("input", { type: "text", name: "predecessorString", id: "predecessorString", value: formData.predecessorString || '', onChange: handleChange, className: "w-full p-2 modal-input rounded-md", placeholder: "e.g., 17, 3FS+4d" })),
+                    React.createElement("div", { className: "flex items-center space-x-4" }, React.createElement("label", { htmlFor: "isCritical", className: "flex items-center text-sm font-medium modal-label" }, React.createElement("input", { type: "checkbox", name: "isCritical", id: "isCritical", checked: !!formData.isCritical, onChange: handleChange, className: "h-4 w-4 text-red-600 border-slate-300 rounded focus:ring-red-500 mr-2" }), "Mark as Critical"), React.createElement("label", { htmlFor: "isClientDeliverable", className: "flex items-center text-sm font-medium modal-label" }, React.createElement("input", { type: "checkbox", name: "isClientDeliverable", id: "isClientDeliverable", checked: !!formData.isClientDeliverable, onChange: handleChange, className: "h-4 w-4 text-sky-600 border-slate-300 rounded focus:ring-sky-500 mr-2" }), "Client Deliverable")),
+                    React.createElement("div", { className: "flex justify-end space-x-3 pt-4" }, React.createElement("button", { type: "button", onClick: onClose, className: "px-4 py-2 rounded-md bg-slate-200 hover:bg-slate-300 text-slate-700 transition-colors" }, "Cancel"), React.createElement("button", { type: "submit", className: "px-4 py-2 rounded-md bg-sky-600 hover:bg-sky-700 text-white font-semibold transition-colors flex items-center" }, React.createElement(Save, { size: 18, className: "mr-2" }), " Save Changes"))))));
         };
 
         const AIUpdateModal = ({ task, allTasks, loggedInUserType, onClose, onApplySuggestion, setAppError }) => {
@@ -2386,7 +2442,7 @@ Do not include any text, markdown, or formatting outside of the JSON array.
                     let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
                     const payload = { contents: chatHistory };
                     const apiKey = GEMINI_API_KEY;
-                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
                     const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     if (!response.ok) { throw new Error(`API request failed with status ${response.status}`); }
                     
@@ -2492,10 +2548,11 @@ Do not include any text, markdown, or formatting outside of the JSON array.
             );
         };
 
-        const NotesModal = ({ task, loggedInUserType, onClose, onAddNote }) => {
+        const NotesModal = ({ task, loggedInUser, onClose, onAddNote }) => {
             const { useState, useEffect, useRef } = React; 
             const [noteText, setNoteText] = useState("");
             const modalContentRef = useRef(null);
+            const loggedInUserType = loggedInUser.userType;
 
             useEffect(() => {
                 const handleClickOutside = (event) => {
@@ -2520,7 +2577,7 @@ Do not include any text, markdown, or formatting outside of the JSON array.
                                     React.createElement("ul", { className: "list-none space-y-2 max-h-48 overflow-y-auto pr-2" },
                                         task.notes.slice().reverse().map((n, idx) => (
                                             React.createElement("li", { key: idx, className: "mb-1 p-2.5 bg-slate-50 rounded-md border border-slate-200 text-xs" },
-                                                React.createElement("span", { className: "block font-medium text-slate-700" }, new Date(n.timestamp).toLocaleString(), " (", n.source, ")"),
+                                                React.createElement("span", { className: "block font-medium text-slate-700" }, `${n.source} (`, new Date(n.timestamp).toLocaleString(), ")"),
                                                 React.createElement("p", { className: "text-slate-600 mt-0.5 whitespace-pre-wrap" }, n.text)
                                             )
                                         ))
@@ -2542,13 +2599,14 @@ Do not include any text, markdown, or formatting outside of the JSON array.
                 )
             );
         };
-        const ClientCommunicationModal = ({ task, loggedInUserType, onClose, onAdminAddComment, onClientRespond }) => {
+        const ClientCommunicationModal = ({ task, loggedInUser, onClose, onAdminAddComment, onClientRespond }) => {
             const { useState, useEffect, useRef } = React; 
             const [adminCommentText, setAdminCommentText] = useState(""); 
             const [selectedStatus, setSelectedStatus] = useState("");
             const [clientCommentText, setClientCommentText] = useState('');
             const modalContentRef = useRef(null);
             const latestComment = (task.clientComments && task.clientComments.length > 0) ? task.clientComments[task.clientComments.length - 1] : null;
+            const loggedInUserType = loggedInUser.userType;
 
             useEffect(() => {
                 const handleClickOutside = (event) => {
@@ -2583,7 +2641,7 @@ Do not include any text, markdown, or formatting outside of the JSON array.
                                         React.createElement("ul", { className: "list-none space-y-3 max-h-48 overflow-y-auto pr-2" },
                                             task.clientComments.slice().reverse().map((cc) => (
                                                 React.createElement("li", { key: cc.id, className: "mb-2 p-2.5 rounded-md border text-xs " + (cc.clientStatus ? "bg-green-50 border-green-200" : "bg-sky-50 border-sky-200") },
-                                                    React.createElement("span", { className: "block font-medium text-slate-700" }, "Admin (", new Date(cc.adminTimestamp).toLocaleString(), "):"),
+                                                    React.createElement("span", { className: "block font-medium text-slate-700" }, `${cc.adminName || 'Admin'} (`, new Date(cc.adminTimestamp).toLocaleString(), "):"),
                                                     React.createElement("p", { className: "text-slate-600 mt-0.5 whitespace-pre-wrap" }, cc.adminComment),
                                                     cc.clientStatus && (React.createElement(React.Fragment, null, 
                                                         React.createElement("hr", { className: "my-2 border-slate-300" }), 
@@ -2610,7 +2668,7 @@ Do not include any text, markdown, or formatting outside of the JSON array.
                             React.createElement("div", { className: "space-y-4" },
                                 React.createElement("div", null,
                                     React.createElement("h3", { className: "font-medium text-slate-800 mb-1 text-sm" }, "Latest Admin Comment"),
-                                    latestComment && !latestComment.clientStatus ? (React.createElement("div", { className: "p-3 bg-sky-50 rounded-md text-sm text-slate-700 border border-sky-200" }, React.createElement("strong", null, new Date(latestComment.adminTimestamp).toLocaleString(), ":"), React.createElement("p", { className: "mt-1 whitespace-pre-wrap" }, latestComment.adminComment))) : latestComment && latestComment.clientStatus ? (React.createElement("p", { className: "text-sm italic text-slate-500 p-3 bg-slate-50 rounded-md border" }, "You have already responded to the latest comment.")) : (React.createElement("p", { className: "text-sm italic text-slate-500 p-3 bg-slate-50 rounded-md border" }, "No pending comments from Admin."))
+                                    latestComment && !latestComment.clientStatus ? (React.createElement("div", { className: "p-3 bg-sky-50 rounded-md text-sm text-slate-700 border border-sky-200" }, React.createElement("strong", null, `${latestComment.adminName || 'Admin'} (`, new Date(latestComment.adminTimestamp).toLocaleString(), "):"), React.createElement("p", { className: "mt-1 whitespace-pre-wrap" }, latestComment.adminComment))) : latestComment && latestComment.clientStatus ? (React.createElement("p", { className: "text-sm italic text-slate-500 p-3 bg-slate-50 rounded-md border" }, "You have already responded to the latest comment.")) : (React.createElement("p", { className: "text-sm italic text-slate-500 p-3 bg-slate-50 rounded-md border" }, "No pending comments from Admin."))
                                 ),
                                 latestComment && !latestComment.clientStatus && (
                                     React.createElement(React.Fragment, null,
