@@ -3,11 +3,12 @@ import os
 import json
 import pandas as pd
 import math
-import hashlib # For password hashing
+import hashlib
+from datetime import datetime
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 PROFILE_DATA_FILE = 'profile_data.json'
-LOGO_FILE = 'logo.png' # This is no longer used by Python but kept for reference
+ACTIVITY_LOG_FILE = 'activity_log.json' # New log file
 
 # --- Helper Functions ---
 
@@ -21,9 +22,6 @@ def sanitize(obj):
         return {k: sanitize(v) for k, v in obj.items()}
     if isinstance(obj, list):
         return [sanitize(v) for v in obj]
-
-    # After handling collections, check for scalar "Not a Number" values.
-    # This correctly handles float NaN, pandas NaT, etc., but avoids arrays.
     if pd.isna(obj):
         return None
 
@@ -32,6 +30,15 @@ def sanitize(obj):
 def hash_password(password):
     """Hashes a password for storing."""
     return hashlib.sha256(password.encode()).hexdigest()
+
+def get_name_from_email(email):
+    """Creates a display name from an email address."""
+    try:
+        name_part = email.split('@')[0]
+        # Replace dots or underscores with spaces and capitalize
+        return ' '.join(word.capitalize() for word in name_part.replace('.', ' ').replace('_', ' ').split())
+    except:
+        return "Admin" # Fallback
 
 def get_project_data_file(project_name):
     """Generates the filename for a project's data."""
@@ -60,6 +67,67 @@ def initialize_profile_data():
         with open(PROFILE_DATA_FILE, 'w') as f:
             json.dump(initial_data, f, indent=4)
 
+def initialize_activity_log():
+    """Creates an empty log file if one doesn't exist."""
+    if not os.path.exists(ACTIVITY_LOG_FILE):
+        with open(ACTIVITY_LOG_FILE, 'w') as f:
+            json.dump([], f)
+
+def log_activity(user_email, project_name, action, details):
+    """Logs an admin's action to the activity log file."""
+    try:
+        with open(ACTIVITY_LOG_FILE, 'r+') as f:
+            log_data = json.load(f)
+            log_entry = {
+                "timestamp": datetime.now().isoformat(),
+                "user": user_email,
+                "project": project_name,
+                "action": action,
+                "details": details
+            }
+            log_data.insert(0, log_entry) # Add new logs to the top
+            f.seek(0)
+            json.dump(log_data, f, indent=4)
+            f.truncate()
+    except (IOError, json.JSONDecodeError) as e:
+        # If file is empty or corrupt, start a new list
+        with open(ACTIVITY_LOG_FILE, 'w') as f:
+            log_entry = {
+                "timestamp": datetime.now().isoformat(),
+                "user": user_email,
+                "project": project_name,
+                "action": action,
+                "details": details
+            }
+            json.dump([log_entry], f, indent=4)
+        print(f"Log file was empty or corrupt. Created a new one. Error: {e}")
+
+
+def recalculate_progress_recursively(tasks):
+    """
+    NEW: Recursively calculates parent progress based on weighted child progress.
+    """
+    for task in tasks:
+        if task.get('subtasks') and len(task['subtasks']) > 0:
+            # First, recurse to ensure children are calculated
+            task['subtasks'] = recalculate_progress_recursively(task['subtasks'])
+            
+            # Now, calculate this task's progress
+            total_weight = 0
+            weighted_progress_sum = 0
+            for subtask in task['subtasks']:
+                # MODIFIED: Use 0.0 as the default and fix logic to handle 0 weightage correctly.
+                weight = float(subtask.get('weightage', 0.0))
+                progress = float(subtask.get('progress', 0) or 0)
+                total_weight += weight
+                weighted_progress_sum += progress * weight
+            
+            if total_weight > 0:
+                task['progress'] = round(weighted_progress_sum / total_weight)
+            else:
+                task['progress'] = 0 # Avoid division by zero
+    return tasks
+
 
 def build_task_hierarchy(df):
     """
@@ -76,6 +144,7 @@ def build_task_hierarchy(df):
         'Start_Date': ['Start', 'start', 'Start_Date'],
         'Finish_Date': ['Finish', 'finish', 'Finish_Date'],
         'Predecessors': ['Predecessors', 'predecessors'],
+        'Weightage': ['Weightage', 'Weightage (%)', 'weightage'],
         'Notes': ['Notes']
     }
 
@@ -85,14 +154,28 @@ def build_task_hierarchy(df):
             if name in df.columns:
                 df.rename(columns={name: target_key}, inplace=True)
                 break
-    
+
     # First pass: create all task objects and map them by WBS
     for _, row in df.iterrows():
         if pd.isna(row.get('WBS')):
             continue
-            
+
         wbs_str = str(row.get('WBS'))
-        
+
+        # MODIFIED: Handle decimal weightage from CSV, defaulting to 0.
+        try:
+            # Get the value. Default to 0.0 if the column/value is missing.
+            raw_val = row.get('Weightage', 0.0)
+            # If the value from the CSV is empty/null, also treat it as 0.0.
+            if raw_val is None or pd.isna(raw_val):
+                weightage_val = 0.0
+            else:
+                # Try converting the retrieved value to a float.
+                weightage_val = float(raw_val)
+        except (ValueError, TypeError):
+            # If conversion fails (e.g., for non-numeric text), default to 0.0.
+            weightage_val = 0.0
+
         task = {
             'id': wbs_str,
             'wbs': wbs_str,
@@ -101,6 +184,7 @@ def build_task_hierarchy(df):
             'plannedEndDate': row.get('Finish_Date'),
             'predecessorString': row.get('Predecessors', ''),
             'originalDurationDays': row.get('Duration'),
+            'weightage': weightage_val, # Use the converted float value
             'notes': [{'text': row.get('Notes'), 'timestamp': pd.Timestamp.now().isoformat(), 'source': 'import'}] if pd.notna(row.get('Notes')) else [],
             'actualStartDate': None,
             'actualEndDate': None,
@@ -128,7 +212,8 @@ def build_task_hierarchy(df):
         else:
             top_level_tasks.append(task)
 
-    return top_level_tasks
+    # After building hierarchy, calculate progress
+    return recalculate_progress_recursively(top_level_tasks)
 
 
 # --- API Endpoints ---
@@ -157,7 +242,8 @@ def admin_signup():
         f.seek(0)
         json.dump(profiles, f, indent=4)
         f.truncate()
-
+    
+    log_activity(email, None, "User Signup", f"New admin account created for {email}, awaiting approval.")
     return jsonify({"status": "success", "message": "Signup successful! A Super Admin has been notified to approve your account."})
 
 @app.route('/api/login', methods=['POST'])
@@ -176,7 +262,13 @@ def login():
         for user in profiles['users']:
             if user['email'] == email and user['password'] == hashed_pass:
                 if user['status'] == 'approved':
-                    return jsonify({"status": "success", "userType": user['role'], "email": user['email']})
+                    log_activity(email, None, "User Login", "Admin successfully logged in.")
+                    return jsonify({
+                        "status": "success", 
+                        "userType": user['role'], 
+                        "email": user['email'],
+                        "name": get_name_from_email(user['email']) # Return name
+                    })
                 elif user['status'] == 'pending':
                     return jsonify({"status": "error", "message": "Your account is pending approval."}), 403
         return jsonify({"status": "error", "message": "Invalid admin credentials."}), 401
@@ -219,6 +311,7 @@ def approve_admin():
         f.seek(0)
         json.dump(profiles, f, indent=4)
         f.truncate()
+        log_activity(email_to_approve, None, "Approval", f"Admin account approved for {email_to_approve}.")
         
     return jsonify({"status": "success", "message": f"Admin '{email_to_approve}' has been approved."})
 
@@ -241,6 +334,7 @@ def reject_admin():
         f.seek(0)
         json.dump(profiles, f, indent=4)
         f.truncate()
+        log_activity(email_to_reject, None, "Rejection", f"Admin account rejected for {email_to_reject}.")
         
     return jsonify({"status": "success", "message": f"Admin request for '{email_to_reject}' has been rejected and removed."})
 
@@ -282,6 +376,18 @@ def manage_projects():
             
             return jsonify({"status": "success", "message": "Project added successfully.", "project": new_project})
 
+@app.route('/api/activity_log', methods=['GET'])
+def get_activity_log():
+    """Serves the content of the activity log file."""
+    if not os.path.exists(ACTIVITY_LOG_FILE):
+        return jsonify([])
+    try:
+        with open(ACTIVITY_LOG_FILE, 'r') as f:
+            logs = json.load(f)
+        return jsonify(logs)
+    except (IOError, json.JSONDecodeError):
+        return jsonify([])
+
 @app.route('/api/load', methods=['GET'])
 def load_data():
     project_name = request.args.get('project')
@@ -299,17 +405,59 @@ def load_data():
 @app.route('/api/save', methods=['POST'])
 def save_data():
     project_name = request.args.get('project')
-    if not project_name:
-        return jsonify({"status": "error", "message": "Project name is required."}), 400
-        
+    if not project_name: return jsonify({"status": "error", "message": "Project name is required."}), 400
+    
+    payload = request.get_json()
+    if not payload: return jsonify({"status": "error", "message": "No data received"}), 400
+
+    new_tasks_data = payload.get('tasks')
+    user_email = payload.get('user_email') # This will be None for clients
+
+    if new_tasks_data is None:
+        return jsonify({"status": "error", "message": "Payload must include tasks"}), 400
+
     data_file = get_project_data_file(project_name)
-    data = request.get_json()
-    if data is None:
-        return jsonify({"status": "error", "message": "No data received"}), 400
-    data = sanitize(data)
+    
+    # --- MODIFIED: Conditional Logging ---
+    # Only perform logging if an email is provided (i.e., the user is an admin)
+    if user_email:
+        old_tasks = {}
+        if os.path.exists(data_file):
+            with open(data_file, 'r') as f:
+                try:
+                    old_data_list = json.load(f)
+                    def task_to_dict(tasks_list, task_dict):
+                        for t in tasks_list:
+                            task_dict[t['id']] = t
+                            if t.get('subtasks'): task_to_dict(t['subtasks'], task_dict)
+                    task_to_dict(old_data_list, old_tasks)
+                except (json.JSONDecodeError, TypeError):
+                    pass
+
+        new_tasks = {}
+        def task_to_dict_new(tasks_list, task_dict):
+            for t in tasks_list:
+                task_dict[t['id']] = t
+                if t.get('subtasks'): task_to_dict_new(t['subtasks'], task_dict)
+        task_to_dict_new(new_tasks_data, new_tasks)
+        
+        added_tasks = set(new_tasks.keys()) - set(old_tasks.keys())
+        deleted_tasks = set(old_tasks.keys()) - set(new_tasks.keys())
+        common_tasks = set(new_tasks.keys()) & set(old_tasks.keys())
+
+        for task_id in added_tasks: log_activity(user_email, project_name, "Task Added", f"Task '{new_tasks[task_id]['taskName']}' (WBS: {new_tasks[task_id]['wbs']}) was created.")
+        for task_id in deleted_tasks: log_activity(user_email, project_name, "Task Deleted", f"Task '{old_tasks[task_id]['taskName']}' (WBS: {old_tasks[task_id]['wbs']}) was deleted.")
+        for task_id in common_tasks:
+            if json.dumps(old_tasks[task_id], sort_keys=True) != json.dumps(new_tasks[task_id], sort_keys=True):
+                 log_activity(user_email, project_name, "Task Edited", f"Task '{new_tasks[task_id]['taskName']}' (WBS: {new_tasks[task_id]['wbs']}) was modified.")
+    # --- End Conditional Logging ---
+
+    # Recalculate progress and save (runs for both admins and clients)
+    final_data = sanitize(recalculate_progress_recursively(new_tasks_data))
     with open(data_file, 'w') as f:
-        json.dump(data, f, indent=4)
-    return jsonify({"status": "success", "rows": len(data) if isinstance(data, list) else 1})
+        json.dump(final_data, f, indent=4)
+    return jsonify({"status": "success"})
+
 
 @app.route('/api/upload', methods=['POST'])
 def upload_csv():
@@ -335,6 +483,11 @@ def upload_csv():
         
         with open(data_file, 'w') as f:
             json.dump(data, f, indent=4)
+        
+        # Log this action. Assumes user info is not available here, so generic log.
+        user_email = request.form.get('user_email', 'Unknown User')
+        log_activity(user_email, project_name, "CSV Upload", f"{len(df)} rows imported from '{file.filename}'.")
+
         return jsonify({"status": "uploaded", "rows": len(df)})
     except Exception as e:
         return jsonify({"status": "error", "message": f"An error occurred while processing the CSV: {str(e)}"}), 500
@@ -345,4 +498,5 @@ def index():
 
 if __name__ == '__main__':
     initialize_profile_data()
+    initialize_activity_log() # Initialize log file on startup
     app.run(debug=True, host='0.0.0.0', port=5125)
