@@ -1754,27 +1754,85 @@
                 saveDataToServer(updatedTasks, 'New task added successfully.');
             }, [tasks, saveDataToServer]);
 
-            const handleDeleteTask = useCallback((taskId) => {
-                if (!window.confirm("Are you sure you want to delete this task and all its subtasks? This action cannot be undone.")) {
-                    return;
-                }
+            // In index.html, inside the App component
 
-                const deleteTaskRecursively = (taskList, idToDelete) => {
-                    const newTaskList = taskList.filter(task => task.id !== idToDelete);
-                    if (newTaskList.length < taskList.length) {
-                        return newTaskList;
-                    }
-                    return taskList.map(task => {
-                        if (task.subtasks && task.subtasks.length > 0) {
-                            return { ...task, subtasks: deleteTaskRecursively(task.subtasks, idToDelete) };
+const handleDeleteTask = useCallback((taskId) => {
+    if (!window.confirm("Are you sure you want to delete this task and all its subtasks? This action cannot be undone.")) {
+        return;
+    }
+
+    // Recursively finds and removes the task with the matching ID
+    const deleteTaskRecursively = (taskList, idToDelete) => {
+        const newTaskList = taskList.filter(task => task.id !== idToDelete);
+        if (newTaskList.length < taskList.length) {
+            return newTaskList; // Deletion happened at this level
+        }
+        return taskList.map(task => {
+            if (task.subtasks && task.subtasks.length > 0) {
+                return { ...task, subtasks: deleteTaskRecursively(task.subtasks, idToDelete) };
+            }
+            return task;
+        });
+    };
+
+    const tasksAfterDeletion = deleteTaskRecursively(tasks, taskId);
+
+    // NEW: Re-indexes the entire WBS structure and updates all predecessors
+    const rebalanceWbsAndDependencies = (tasksToRebalance) => {
+        const wbsMapping = {}; // Stores oldWbs -> newWbs
+
+        // PASS 1: Re-index WBS and populate the mapping
+        const reindexPass = (currentTasks, prefix = '') => {
+            return currentTasks.map((task, index) => {
+                const newWbs = prefix ? `${prefix}.${index + 1}` : `${index + 1}`;
+                if (task.wbs !== newWbs) {
+                    wbsMapping[task.wbs] = newWbs;
+                }
+                const updatedTask = { ...task, id: newWbs, wbs: newWbs };
+                if (updatedTask.subtasks && updatedTask.subtasks.length > 0) {
+                    updatedTask.subtasks = reindexPass(updatedTask.subtasks, newWbs);
+                }
+                return updatedTask;
+            });
+        };
+
+        const reindexedTasks = reindexPass(tasksToRebalance);
+
+        if (Object.keys(wbsMapping).length === 0) {
+            return reindexedTasks; // No changes needed
+        }
+
+        // PASS 2: Update all predecessor strings using the mapping
+        const updatePredecessorsPass = (currentTasks) => {
+            return currentTasks.map(task => {
+                let predString = task.predecessorString || '';
+                if (predString) {
+                    // Regex to find all WBS numbers in the string
+                    const wbsNumbersInString = predString.match(/\d+(\.\d+)*/g) || [];
+                    for (const oldWbs of wbsNumbersInString) {
+                        if (wbsMapping[oldWbs]) {
+                           // Replace all occurrences of the old WBS with the new one
+                           predString = predString.replace(new RegExp(`\\b${oldWbs}\\b`, 'g'), wbsMapping[oldWbs]);
                         }
-                        return task;
-                    });
-                };
-                
-                const updatedTasks = deleteTaskRecursively(tasks, taskId);
-                saveDataToServer(updatedTasks, 'Task deleted successfully.');
-            }, [tasks, saveDataToServer]);
+                    }
+                }
+                const updatedTask = { ...task, predecessorString: predString };
+
+                if (updatedTask.subtasks && updatedTask.subtasks.length > 0) {
+                    updatedTask.subtasks = updatePredecessorsPass(updatedTask.subtasks);
+                }
+                return updatedTask;
+            });
+        };
+
+        return updatePredecessorsPass(reindexedTasks);
+    };
+
+    const finalTasks = rebalanceWbsAndDependencies(tasksAfterDeletion);
+
+    saveDataToServer(finalTasks, 'Task deleted and WBS re-indexed successfully.');
+
+}, [tasks, saveDataToServer]);
 
             const handleToggleExpansion = (taskId) => {
                 const toggle = (taskList) => {
