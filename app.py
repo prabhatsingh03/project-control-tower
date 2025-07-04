@@ -537,7 +537,11 @@ def get_s_curve_data(tasks):
     # Generate S-curve data points
     s_curve_data = {'dates': [], 'planned_progress': [], 'actual_progress': []}
     current_date = project_start_date
-    while current_date <= project_end_date:
+    
+    # MODIFICATION: The loop will now stop at today's date or the project end date, whichever is earlier.
+    loop_end_date = min(project_end_date, datetime.now())
+
+    while current_date <= loop_end_date:
         date_str = current_date.strftime('%d-%b-%y')
 
         # Planned progress: sum of weightages of tasks *planned* to be finished by this date
