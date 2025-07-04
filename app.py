@@ -564,8 +564,8 @@ def get_s_curve_data(tasks):
 
     return s_curve_data
 
+# In app.py, replace the entire function
 
-# NEW: API endpoint to get aggregated data for charts
 @app.route('/api/chart_data')
 def get_chart_data():
     project_name = request.args.get('project')
@@ -574,9 +574,9 @@ def get_chart_data():
 
     data_file = get_project_data_file(project_name)
     if not os.path.exists(data_file):
-        # Return empty data structure so frontend doesn't break
         return jsonify({
-            'status_counts': {}, 'total_delays': {}, 's_curve_data': {}, 'overall_actual_progress': 0
+            'status_counts': {}, 'total_delays': {}, 's_curve_data': {}, 
+            'overall_actual_progress': 0, 'next_critical_activity': None
         })
 
     with open(data_file, 'r') as f:
@@ -604,19 +604,44 @@ def get_chart_data():
         total_delays['contractor'] += task.get('delayContractorDays', 0) or 0
         total_delays['client'] += task.get('delayClientDays', 0) or 0
 
-    # 3. Overall Actual Progress (manually entered progress from root task)
+    # 3. Overall Actual Progress
     overall_actual_progress = tasks[0].get('progress', 0) if tasks else 0
 
-    # 4. NEW: S-Curve Data
+    # 4. S-Curve Data
     s_curve_data = get_s_curve_data(tasks)
 
+    # 5. Find the next single critical activity (CORRECTED LOGIC)
+    future_critical_tasks = []
+    today = datetime.now().date()
+
+    for task in all_tasks:
+        if task.get('isCritical'):
+            try:
+                start_date_str = task.get('plannedStartDate')
+                if start_date_str and datetime.fromisoformat(start_date_str).date() >= today:
+                    future_critical_tasks.append(task)
+            except (ValueError, TypeError):
+                continue
+
+    next_critical_activity_obj = None
+    if future_critical_tasks:
+        next_critical_activity_obj = min(future_critical_tasks, key=lambda x: datetime.fromisoformat(x['plannedStartDate']))
+
+    next_critical_activity_data = None
+    if next_critical_activity_obj:
+        next_critical_activity_data = {
+            'wbs': next_critical_activity_obj.get('wbs', ''),
+            'taskName': next_critical_activity_obj.get('taskName', '')
+        }
+
+    # The return statement is now correctly placed at the end of the function
     return jsonify({
         'status_counts': status_counts,
         'total_delays': total_delays,
         's_curve_data': s_curve_data,
-        'overall_actual_progress': overall_actual_progress
+        'overall_actual_progress': overall_actual_progress,
+        'next_critical_activity': next_critical_activity_data
     })
-
 
 @app.route('/')
 def index():
