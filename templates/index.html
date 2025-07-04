@@ -1444,7 +1444,7 @@
         // --- Main Application Component (App) ---
         const App = () => {
             const { useState, useEffect, useCallback, useMemo } = React;
-            
+            const [dashboardData, setDashboardData] = useState(null);
             // --- Helper function to find a task recursively ---
             const findTaskByIdRecursively = (taskList, taskId) => {
                 for (const task of taskList) {
@@ -1499,6 +1499,17 @@
             const APP_SUBTITLE = selectedProject || "No Project Selected";
 
             // --- Effects ---
+
+            useEffect(() => {
+                if (loggedInUser && selectedProject) {
+                    fetch(`/api/chart_data?project=${encodeURIComponent(selectedProject)}`)
+                        .then(res => res.json())
+                        .then(data => setDashboardData(data))
+                        .catch(err => console.error("Failed to load dashboard data:", err));
+                } else {
+                    setDashboardData(null); // Clear data if no project is selected
+                }
+            }, [loggedInUser, selectedProject, tasks]);
 
             // Initial Load: Check auth
             useEffect(() => {
@@ -2130,15 +2141,15 @@ const handleDeleteTask = useCallback((taskId) => {
                 React.createElement(SideNavbar, { isOpen: isSidebarOpen, onClose: () => setIsSidebarOpen(false), onNavigate: handleNavigate }),
 
                 // Header
-                React.createElement("header", { key: "header", className: "mb-6 p-4 bg-white shadow-md rounded-lg" },
+
+React.createElement("header", { key: "header", className: "mb-6 p-4 bg-white shadow-md rounded-lg" },
+    // Top Row: Logo, Nav, and Actions
     React.createElement("div", { className: "flex flex-wrap items-center justify-between gap-4" },
         // Left Side: Logo and Title Area
         React.createElement("div", { className: "flex items-center space-x-3" },
-            // Hamburger Menu (Mobile Only)
             React.createElement("button", { onClick: () => setIsSidebarOpen(true), className: "p-2 rounded-md hover:bg-slate-100 lg:hidden" }, 
                 React.createElement(MenuIcon, { size: 24, className: "text-slate-600" })
             ),
-            // Logo & Title
             React.createElement("img", { src: 'static/logo.png', alt: "App Logo", className: "h-10 w-auto" }),
             React.createElement("div", null,
                 React.createElement("span", { className: "text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-sky-600 to-blue-700" }, APP_TITLE),
@@ -2147,32 +2158,33 @@ const handleDeleteTask = useCallback((taskId) => {
             )
         ),
         
-        // Right Side: Merged Navigation & Action Buttons (Desktop Only)
-        React.createElement("nav", { className: "hidden lg:flex items-center gap-2" },
-            React.createElement("button", {
-                onClick: () => handleNavigate('dashboard'),
-                className: `px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${currentPage === 'dashboard' ? 'bg-sky-100 text-sky-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'}`
-            }, "Dashboard"),
-            React.createElement("button", {
-                onClick: () => handleNavigate('charts'),
-                className: `px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${currentPage === 'charts' ? 'bg-sky-100 text-sky-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'}`
-            }, "Charts"),
-            
-            // Divider
-            React.createElement("div", {className: "h-6 w-px bg-slate-200 mx-2"}),
-
-            loggedInUser.userType === 'super_admin' && React.createElement("button", {
-                onClick: () => setShowActivityLogModal(true),
-                className: "px-4 py-2 text-sm font-semibold rounded-lg text-slate-600 bg-slate-200 hover:bg-slate-300 hover:text-slate-800 transition-colors flex items-center"
-            }, React.createElement(HistoryIcon, { size: 16, className: "mr-2" }), "Activity Log"),
-            
-            React.createElement("button", { onClick: handleLogout, className: "px-4 py-2 text-sm font-semibold rounded-lg text-slate-600 bg-slate-200 hover:bg-slate-300 hover:text-slate-800 transition-colors flex items-center" }, 
-                React.createElement(LogOutIcon, { size: 16, className: "mr-2" }), 
-                "Logout"
+        // Right Side: Navigation & Action Buttons (Desktop Only)
+        React.createElement("div", { className: "hidden lg:flex items-center gap-4" },
+            React.createElement("nav", { className: "flex items-center gap-1" },
+                React.createElement("button", {
+                    onClick: () => handleNavigate('dashboard'),
+                    className: `px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${currentPage === 'dashboard' ? 'bg-sky-100 text-sky-700' : 'text-slate-600 hover:bg-slate-100'}`
+                }, "Dashboard"),
+                React.createElement("button", {
+                    onClick: () => handleNavigate('charts'),
+                    className: `px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${currentPage === 'charts' ? 'bg-sky-100 text-sky-700' : 'text-slate-600 hover:bg-slate-100'}`
+                }, "Charts")
+            ),
+            React.createElement("div", {className: "h-6 w-px bg-slate-200"}),
+            React.createElement("div", { className: "flex items-center gap-2" },
+                loggedInUser.userType === 'super_admin' && React.createElement("button", {
+                    onClick: () => setShowActivityLogModal(true),
+                    className: "px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg flex items-center"
+                }, React.createElement(HistoryIcon, { size: 16, className: "mr-2" }), "Activity Log"),
+                React.createElement("button", { onClick: handleLogout, className: "px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg flex items-center" }, 
+                    React.createElement(LogOutIcon, { size: 16, className: "mr-2" }), 
+                    "Logout"
+                )
             )
         )
     ),
-    // Project Selector and View Toggles (this part remains the same)
+
+    // Middle Row: Centered Controls
     React.createElement("div", { className: "mt-4 flex flex-col sm:flex-col justify-center items-center gap-4" },
         loggedInUser.userType !== 'client' && React.createElement("div", { className: "flex items-center gap-2 w-full sm:w-auto" },
             React.createElement("select", {
@@ -2186,6 +2198,21 @@ const handleDeleteTask = useCallback((taskId) => {
             loggedInUser.userType !== 'client' && React.createElement("button", { onClick: () => setCurrentView('admin'), className: `px-6 py-2 rounded-lg font-semibold transition-all duration-300 ${currentView === 'admin' ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}` }, "Admin View"),
             React.createElement("button", { onClick: () => setCurrentView('client'), className: `px-6 py-2 rounded-lg font-semibold transition-all duration-300 ${currentView === 'client' ? 'bg-teal-600 text-white shadow-lg' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}` }, "Client View")
         )
+    ),
+
+    // Bottom Row: Next Critical Activity
+    React.createElement("div", { className: "mt-4 pt-4 border-t border-slate-200 min-h-[24px]" },
+        (dashboardData && dashboardData.next_critical_activity) ?
+        React.createElement('div', {
+            className: 'text-sm font-semibold text-red-700 animate-pulse'
+        },
+            `Next Critical Activity: ${dashboardData.next_critical_activity.wbs} - ${
+                dashboardData.next_critical_activity.taskName.length > 60 ?
+                dashboardData.next_critical_activity.taskName.substring(0, 60) + '...' :
+                dashboardData.next_critical_activity.taskName
+            }`
+        ) :
+        React.createElement('div', { className: 'h-6 text-sm text-slate-500 italic' }, 'No upcoming critical tasks.')
     )
 ),
                 
@@ -2522,6 +2549,44 @@ const handleDeleteTask = useCallback((taskId) => {
                 )
             );
         };
+
+        // In index.html, add this new component
+
+const HeaderTicker = ({ criticalTasks }) => {
+    const { useState, useEffect } = React;
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [isVisible, setIsVisible] = useState(true);
+
+    useEffect(() => {
+        if (!criticalTasks || criticalTasks.length <= 1) return;
+
+        const interval = setInterval(() => {
+            setIsVisible(false); // Start fade-out
+            setTimeout(() => {
+                setCurrentIndex(prevIndex => (prevIndex + 1) % criticalTasks.length);
+                setIsVisible(true); // Start fade-in
+            }, 400); // Wait for fade-out animation to complete
+        }, 5000); // Change task every 5 seconds
+
+        return () => clearInterval(interval);
+    }, [criticalTasks]);
+
+    if (!criticalTasks || criticalTasks.length === 0) {
+        return React.createElement('div', { className: 'h-6 text-sm text-slate-500 italic' }, 'No active critical tasks.');
+    }
+
+    const task = criticalTasks[currentIndex];
+    const shortName = task.taskName.length > 40 ? task.taskName.substring(0, 40) + '...' : task.taskName;
+
+    return React.createElement('div', { className: 'relative h-6 w-full sm:w-96 overflow-hidden' },
+        React.createElement('span', {
+            className: `absolute inset-0 transition-opacity duration-300 ease-in-out ${isVisible ? 'opacity-100' : 'opacity-0'}`
+        },
+            React.createElement('span', { className: 'text-sm font-semibold text-red-600 animate-pulse' }, "Next Critical Activity: "),
+            React.createElement('span', { className: 'text-sm font-semibold text-slate-700' }, `${task.wbs} - ${shortName}`)
+        )
+    );
+};
         
         // --- TaskTable Component ---
         const TaskTable = ({ tasks, viewType, loggedInUserType, sortBy, onSort, areAllExpanded, onToggleAllExpansion, ...props }) => {
