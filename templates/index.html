@@ -690,44 +690,16 @@
         };
         
         // --- NEW: ChartsPage Component ---
-        const ChartsPage = ({ projectName, onNavigateBack }) => {
-            const { useState, useEffect, useRef } = React;
+        const ChartsPage = ({ projectName, chartData, isLoading, error, onNavigateBack }) => {
+            const { useEffect, useRef } = React;
 
             const statusChartRef = useRef(null);
             const delayChartRef = useRef(null);
-            const progressCurveChartRef = useRef(null); // Ref for the new S-Curve chart
-
-            const [chartData, setChartData] = useState(null);
-            const [isLoading, setIsLoading] = useState(true);
-            const [error, setError] = useState(null);
+            const progressCurveChartRef = useRef(null);
 
             useEffect(() => {
-                if (!projectName) {
-                    setIsLoading(false);
-                    setError("No project selected.");
-                    return;
-                }
-                
-                setIsLoading(true);
-                // Fetch all chart data from the backend API
-                fetch(`/api/chart_data?project=${encodeURIComponent(projectName)}`)
-                    .then(res => {
-                        if (!res.ok) throw new Error('Failed to load chart data from server');
-                        return res.json();
-                    })
-                    .then(data => {
-                        setChartData(data);
-                        setIsLoading(false);
-                    })
-                    .catch(err => {
-                        setError(err.message);
-                        setIsLoading(false);
-                    });
-            }, [projectName]);
-
-
-            useEffect(() => {
-                if (!chartData) return;
+                // If there's no data or we are loading, don't attempt to render charts
+                if (isLoading || error || !chartData) return;
 
                 const chartInstances = [];
 
@@ -815,13 +787,15 @@
 
                 // Cleanup function to destroy charts on component unmount
                 return () => chartInstances.forEach(chart => chart.destroy());
-            }, [chartData]);
+            }, [chartData, isLoading, error]); // Rerun this effect when the data from props changes
+
+            const hasDataForCharts = chartData && (Object.keys(chartData.status_counts || {}).length > 0 || (chartData.s_curve_data && chartData.s_curve_data.dates));
 
             return React.createElement('div', { className: 'p-4 sm:p-6 bg-white shadow-lg rounded-xl' },
                 React.createElement('h2', { className: 'text-2xl font-bold text-slate-800 mb-6' }, `Charts for: ${projectName}`),
                 isLoading ? React.createElement(LoadingSpinner, { message: "Loading Chart Data..."}) :
                 error ? React.createElement('p', { className: 'text-center text-red-500 py-10' }, `Error: ${error}`) :
-                !chartData || (!Object.keys(chartData.status_counts).length && !chartData.s_curve_data.dates) ? (
+                !hasDataForCharts ? (
                     React.createElement('p', { className: 'text-center text-slate-500 py-10' }, 'No task data available to generate charts.')
                 ) : (
                     React.createElement(React.Fragment, null,
@@ -2279,8 +2253,10 @@ React.createElement("header", { key: "header", className: "mb-6 p-4 bg-white sha
                     )
                 ) : (
                     React.createElement(ChartsPage, {
-                        tasks: tasks,
                         projectName: selectedProject,
+                        chartData: dashboardData,
+                        isLoading: isLoading,
+                        error: !dashboardData && !isLoading ? "Could not load chart data." : null,
                         onNavigateBack: () => handleNavigate('dashboard')
                     })
                 ),
@@ -2777,7 +2753,9 @@ const HeaderTicker = ({ criticalTasks }) => {
                 
                 let finalData = { 
                     ...formData, 
-                    progress: Math.max(0, Math.min(100, Number(formData.progress) || 0)), 
+                    progress: Math.max(0, Math.min(100, Number(formData.progress) || 0)),
+                    plannedStartDate: formData.plannedStartDate || null,
+                    plannedEndDate: formData.plannedEndDate || null,
                     actualStartDate: formData.actualStartDate || null, 
                     actualEndDate: formData.actualEndDate || null, 
                     delayWeatherDays: Number(formData.delayWeatherDays) || 0, 
@@ -2792,10 +2770,34 @@ const HeaderTicker = ({ criticalTasks }) => {
                 
                 onSave(finalData);
             };
+
             return (React.createElement("div", { className: "fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm" }, 
                 React.createElement("div", { ref: modalContentRef, className: "modal-content p-6 rounded-xl shadow-2xl w-full max-w-md sm:max-w-lg max-h-[90vh] overflow-y-auto" }, 
                 React.createElement("h2", { className: "text-xl sm:text-2xl font-semibold mb-6 text-sky-600" }, "Edit Task: ", React.createElement("span", {className: "font-bold"}, task.taskName)), 
                 React.createElement("form", { onSubmit: handleSubmit, className: "space-y-4" },
+                    // WBS and Name (non-editable here for simplicity)
+
+                    React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4" },
+                        React.createElement("div", null, 
+                            React.createElement("label", { htmlFor: "plannedStartDate", className: "modal-label block text-sm font-medium mb-1" }, "Planned Start Date"), 
+                            React.createElement("input", { type: "date", name: "plannedStartDate", id: "plannedStartDate", value: formatDateForInput(formData.plannedStartDate), onChange: handleChange, className: "w-full p-2 modal-input rounded-md" })
+                        ),
+                        React.createElement("div", null, 
+                            React.createElement("label", { htmlFor: "plannedEndDate", className: "modal-label block text-sm font-medium mb-1" }, "Planned End Date"), 
+                            React.createElement("input", { type: "date", name: "plannedEndDate", id: "plannedEndDate", value: formatDateForInput(formData.plannedEndDate), onChange: handleChange, className: "w-full p-2 modal-input rounded-md" })
+                        )
+                    ),
+
+                    React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4" },
+                        React.createElement("div", null, 
+                            React.createElement("label", { htmlFor: "actualStartDate", className: "modal-label block text-sm font-medium mb-1" }, "Actual Start Date"), 
+                            React.createElement("input", { type: "date", name: "actualStartDate", id: "actualStartDate", value: formatDateForInput(formData.actualStartDate), onChange: handleChange, className: "w-full p-2 modal-input rounded-md" })
+                        ),
+                        React.createElement("div", null, 
+                            React.createElement("label", { htmlFor: "actualEndDate", className: "modal-label block text-sm font-medium mb-1" }, "Actual End Date"), 
+                            React.createElement("input", { type: "date", name: "actualEndDate", id: "actualEndDate", value: formatDateForInput(formData.actualEndDate), onChange: handleChange, className: "w-full p-2 modal-input rounded-md" }))
+                    ),
+
                     React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4" },
                         React.createElement("div", null, 
                             React.createElement("label", { htmlFor: "progress", className: "modal-label block text-sm font-medium mb-1" }, "Progress (%)"), 
@@ -2807,9 +2809,11 @@ const HeaderTicker = ({ criticalTasks }) => {
                             React.createElement("input", { type: "number", name: "weightage", id: "weightage", value: formData.weightage ?? 0, onChange: handleChange, min: "0", step: "any", className: "w-full p-2 modal-input rounded-md" })
                         )
                     ),
-                    React.createElement("div", null, React.createElement("label", { htmlFor: "status", className: "modal-label block text-sm font-medium mb-1" }, "Status"), React.createElement("select", { name: "status", id: "status", value: formData.status, onChange: handleChange, className: "w-full p-2 modal-input rounded-md" }, TASK_STATUSES.map(s => React.createElement("option", { key: s, value: s }, s)))),
-                    React.createElement("div", null, React.createElement("label", { htmlFor: "actualStartDate", className: "modal-label block text-sm font-medium mb-1" }, "Actual Start Date"), React.createElement("input", { type: "date", name: "actualStartDate", id: "actualStartDate", value: formatDateForInput(formData.actualStartDate), onChange: handleChange, className: "w-full p-2 modal-input rounded-md" })),
-                    React.createElement("div", null, React.createElement("label", { htmlFor: "actualEndDate", className: "modal-label block text-sm font-medium mb-1" }, "Actual End Date"), React.createElement("input", { type: "date", name: "actualEndDate", id: "actualEndDate", value: formatDateForInput(formData.actualEndDate), onChange: handleChange, className: "w-full p-2 modal-input rounded-md" })),
+                    React.createElement("div", null, 
+                        React.createElement("label", { htmlFor: "status", className: "modal-label block text-sm font-medium mb-1" }, "Status"), 
+                        React.createElement("select", { name: "status", id: "status", value: formData.status, onChange: handleChange, className: "w-full p-2 modal-input rounded-md" }, TASK_STATUSES.map(s => React.createElement("option", { key: s, value: s }, s)))
+                    ),
+                    
                     React.createElement("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-4" },
                         React.createElement("div", null, React.createElement("label", { htmlFor: "delayWeatherDays", className: "modal-label block text-sm font-medium mb-1" }, "Weather Delay"), React.createElement("input", { type: "number", name: "delayWeatherDays", id: "delayWeatherDays", value: formData.delayWeatherDays || 0, onChange: handleChange, min: "0", className: "w-full p-2 modal-input rounded-md" })),
                         React.createElement("div", null, React.createElement("label", { htmlFor: "delayContractorDays", className: "modal-label block text-sm font-medium mb-1" }, "Contractor Delay"), React.createElement("input", { type: "number", name: "delayContractorDays", id: "delayContractorDays", value: formData.delayContractorDays || 0, onChange: handleChange, min: "0", className: "w-full p-2 modal-input rounded-md" })),
