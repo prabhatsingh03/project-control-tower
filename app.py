@@ -5,6 +5,7 @@ import json
 import pandas as pd
 import math
 import hashlib
+import time
 from datetime import datetime
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
@@ -412,52 +413,70 @@ def save_data():
     if not payload: return jsonify({"status": "error", "message": "No data received"}), 400
 
     new_tasks_data = payload.get('tasks')
-    user_email = payload.get('user_email') # This will be None for clients
+    user_email = payload.get('user_email')
 
     if new_tasks_data is None:
         return jsonify({"status": "error", "message": "Payload must include tasks"}), 400
 
     data_file = get_project_data_file(project_name)
-    
-    # --- MODIFIED: Conditional Logging ---
-    # Only perform logging if an email is provided (i.e., the user is an admin)
-    if user_email:
-        old_tasks = {}
-        if os.path.exists(data_file):
-            with open(data_file, 'r') as f:
-                try:
-                    old_data_list = json.load(f)
-                    def task_to_dict(tasks_list, task_dict):
-                        for t in tasks_list:
-                            task_dict[t['id']] = t
-                            if t.get('subtasks'): task_to_dict(t['subtasks'], task_dict)
-                    task_to_dict(old_data_list, old_tasks)
-                except (json.JSONDecodeError, TypeError):
-                    pass
+    lock_file = data_file + ".lock"
 
-        new_tasks = {}
-        def task_to_dict_new(tasks_list, task_dict):
-            for t in tasks_list:
-                task_dict[t['id']] = t
-                if t.get('subtasks'): task_to_dict_new(t['subtasks'], task_dict)
-        task_to_dict_new(new_tasks_data, new_tasks)
-        
-        added_tasks = set(new_tasks.keys()) - set(old_tasks.keys())
-        deleted_tasks = set(old_tasks.keys()) - set(new_tasks.keys())
-        common_tasks = set(new_tasks.keys()) & set(old_tasks.keys())
+    # --- NEW: File Locking to Prevent Concurrency Issues ---
+    timeout = 10  # 10-second timeout to prevent infinite loops
+    start_time = time.time()
+    while os.path.exists(lock_file):
+        if time.time() - start_time > timeout:
+            return jsonify({"status": "error", "message": "Could not save data. The project file is currently locked by another process. Please try again in a moment."}), 503
+        time.sleep(0.2)
 
-        for task_id in added_tasks: log_activity(user_email, project_name, "Task Added", f"Task '{new_tasks[task_id]['taskName']}' (WBS: {new_tasks[task_id]['wbs']}) was created.")
-        for task_id in deleted_tasks: log_activity(user_email, project_name, "Task Deleted", f"Task '{old_tasks[task_id]['taskName']}' (WBS: {old_tasks[task_id]['wbs']}) was deleted.")
-        for task_id in common_tasks:
-            if json.dumps(old_tasks[task_id], sort_keys=True) != json.dumps(new_tasks[task_id], sort_keys=True):
-                 log_activity(user_email, project_name, "Task Edited", f"Task '{new_tasks[task_id]['taskName']}' (WBS: {new_tasks[task_id]['wbs']}) was modified.")
-    # --- End Conditional Logging ---
+    try:
+        # Create the lock file
+        with open(lock_file, 'w') as f:
+            pass
 
-    # Recalculate progress and save (runs for both admins and clients)
-    final_data = sanitize(recalculate_progress_recursively(new_tasks_data))
-    with open(data_file, 'w') as f:
-        json.dump(final_data, f, indent=4)
-    return jsonify({"status": "success"})
+        # --- Conditional Logging ---
+        if user_email:
+            old_tasks = {}
+            if os.path.exists(data_file):
+                with open(data_file, 'r') as f:
+                    try:
+                        old_data_list = json.load(f)
+                        def task_to_dict(tasks_list, task_dict):
+                            for t in tasks_list:
+                                task_dict[t['id']] = t
+                                if t.get('subtasks'): task_to_dict(t['subtasks'], task_dict)
+                        task_to_dict(old_data_list, old_tasks)
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+
+            new_tasks = {}
+            def task_to_dict_new(tasks_list, task_dict):
+                for t in tasks_list:
+                    task_dict[t['id']] = t
+                    if t.get('subtasks'): task_to_dict_new(t['subtasks'], task_dict)
+            task_to_dict_new(new_tasks_data, new_tasks)
+            
+            added_tasks = set(new_tasks.keys()) - set(old_tasks.keys())
+            deleted_tasks = set(old_tasks.keys()) - set(new_tasks.keys())
+            common_tasks = set(new_tasks.keys()) & set(old_tasks.keys())
+
+            for task_id in added_tasks: log_activity(user_email, project_name, "Task Added", f"Task '{new_tasks[task_id]['taskName']}' (WBS: {new_tasks[task_id]['wbs']}) was created.")
+            for task_id in deleted_tasks: log_activity(user_email, project_name, "Task Deleted", f"Task '{old_tasks[task_id]['taskName']}' (WBS: {old_tasks[task_id]['wbs']}) was deleted.")
+            for task_id in common_tasks:
+                if json.dumps(old_tasks[task_id], sort_keys=True) != json.dumps(new_tasks[task_id], sort_keys=True):
+                     log_activity(user_email, project_name, "Task Edited", f"Task '{new_tasks[task_id]['taskName']}' (WBS: {new_tasks[task_id]['wbs']}) was modified.")
+
+        # Recalculate progress and save
+        final_data = sanitize(recalculate_progress_recursively(new_tasks_data))
+        with open(data_file, 'w') as f:
+            json.dump(final_data, f, indent=4)
+            
+        return jsonify({"status": "success"})
+
+    finally:
+        # --- NEW: Release the lock ---
+        if os.path.exists(lock_file):
+            os.remove(lock_file)
 
 
 @app.route('/api/upload', methods=['POST'])
